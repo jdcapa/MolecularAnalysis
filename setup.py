@@ -30,7 +30,7 @@ setup(
     long_description=long_description,
 
     # The project's main homepage.
-    url='https://github.com/jdcapa/c4',
+    url='https://github.com/jdcapa/cfour_monitoring',
 
     # Author details
     author='jdcapa',

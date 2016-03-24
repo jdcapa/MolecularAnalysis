@@ -1,0 +1,17 @@
+Metadata-Version: 1.1
+Name: c4
+Version: 1.2.0
+Summary: Monitors the output file of a Cfour calculation
+Home-page: https://github.com/jdcapa/cfour_monitoring
+Author: jdcapa
+Author-email: jalo.capa@gmail.com
+License: GPLv3
+Description: UNKNOWN
+Keywords: cfour quantum chemistry
+Platform: UNKNOWN
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Quantum Chemistry
+Classifier: License :: GNU GPLv3
+Classifier: Programming Language :: Python :: 2.6
+Classifier: Programming Language :: Python :: 2.7
