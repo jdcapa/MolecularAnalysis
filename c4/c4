@@ -1,24 +1,5 @@
 #!/usr/bin/python
-program_description = """
-Script which allows for monitoring of a C4 SCF/CCSD/CCSD(T) (CC_PROG=ECC)
-geometry optimisation or a vibrational calculation.\n
-\n
-Author:         Marcus Kettner\n
-Created:        15/10/2012\n
-Last Edited:    08/10/2015\n
-Version:        1.2.1
-"""
 
-#check https://python-packaging-user-guide.readthedocs.org/en/latest/distributing/
-# next version update:
-    # fix: basis special
-    # add: DPT and DBOC support
-    # add: mrcc support
-    # add: FINDIF support
-    # add: VPT2 support
-    # add: routine that prints out optimisation summary with specific parameter
-
-# Import libraries
 import re
 import sys
 import math
@@ -26,6 +7,12 @@ import argparse
 import os
 import subprocess
 from collections import OrderedDict
+
+program_description = """
+Script which allows for monitoring of a Cfour SCF/MP2/CCSD/CCSD(T)
+geometry optimisation or a vibrational calculation.
+This is a small standalone version separated from all the large classes.
+"""
 
 # parser set-up
 parser = argparse.ArgumentParser(description=program_description)
@@ -62,7 +49,6 @@ vib_write_flag = args.vib_write_flag
 outfile_directory = os.path.dirname(outfile)
 
 
-#================Subroutines================
 def simon_asks(command):
     '''
     Routine to get an output of a unix command.
@@ -82,8 +68,8 @@ def check_if_finished():
     '''
     check_string = simon_asks('tail -n 3 {0}'.format(outfile))
 
-    if ('xprops finished' in check_string
-            or "Zero-point vibrational energy" in check_string):
+    if ('xprops finished' in check_string or
+            "Zero-point vibrational energy" in check_string):
         print "Calculation terminated successfully."
         return True
     else:
@@ -139,7 +125,7 @@ def get_calc_info():
         for k in infodict.keys():
             if re.search("\s+{0}\s+{1}\s+".format(infodict[k][0],
                                                   infodict[k][1]), line):
-                #BOOM, Magic
+                # BOOM, Magic
                 infodict[k][2] = [
                     x for x in line.strip().split('   ') if x][2].strip()
             elif "Job Title" in line:
@@ -157,7 +143,7 @@ def calc_analyser():
         time_info()
 
     if infodict['vib'][2] != 'NO':
-        #calc_type = "VIB"
+        # calc_type = "VIB"
         print "\nCalculation type: Frequency Analysis"
         if infodict['anharm'][2] == "OFF":
             print "Method: Double harmonic approximation"
@@ -167,11 +153,11 @@ def calc_analyser():
     elif (infodict['geomet'][2] == "NR" or infodict['geomet'][2] == "TS"):
         print "\nCalculation type: Optimisation (geometric convergens" + \
             " crit.: 10E-{0} H)".format(infodict['geoconv'][2])
-        #calc_type = "OPT"
+        # calc_type = "OPT"
 
     elif "SINGLE_POINT" in infodict['geomet'][2]:
         print "\nCalculation type: Single Point Energy"
-        #calc_type = "SINGLE_POINT"
+        # calc_type = "SINGLE_POINT"
     else:
         print "Infodict:"
         for key, value in infodict.iteritems():
@@ -207,12 +193,12 @@ def cFour_energies(infodict):
             r"\s+\d+\s+([-0-9]+\.\d+)\s+[0-9]+\.[0-9]+D[-0-9]+")
     else:
         key_E_SCF = re.compile(r"E\(SCF\)\s*=\s*([-0-9]+\.\d*)")
-    #"CCSD energy             -238.831886924899"
+    # "CCSD energy             -238.831886924899"
     if infodict['level'][2] == 'CCSD':
         key_E_CCSD = re.compile(r"Total CCSD energy\s+:\s+([-0-9]+\.\d+)")
     else:
         key_E_CCSD = re.compile(r"CCSD energy\s*([-0-9]+\.\d*)")
-    #"CCSD(T) energy          -238.851462847707"
+    # "CCSD(T) energy          -238.851462847707"
     key_E_CCSD_T = re.compile(r"CCSD\(T\) energy\s*([-0-9]+\.\d*)")
 
     # Process major outputfile
@@ -262,8 +248,8 @@ def cFour_geometries():
                               '([-0-9]+\.\d+)\s+([-0-9]+\.\d+)')
     with open(outfile, 'r') as cfour_main_output_file:
         for line in cfour_main_output_file:
-            if ('Parameter     dV/dR           '
-                    + 'Step          Rold            Rnew' in line):
+            if ('Parameter     dV/dR           ' +
+                    'Step          Rold            Rnew' in line):
                 geometry_flag = True
                 continue
             if geometry_flag:
@@ -334,7 +320,6 @@ def get_vibrations():
 
     normal_coordinates_B = []
     frequency = ""
-    #coordinates = []
     frequency_count = 1
 
     with open(quadrature_path) as quadrature:
@@ -452,7 +437,7 @@ def opt_energy_output(energies, molecular_gradient_norms):
 
     possible_middle_columns = [s_E_SCF, s_E_CCSD, s_E_CCSD_T]
 
-    # How many colums?
+    # How many columns?
     for i, header_string in enumerate(possible_middle_columns):
         if i > max_e:
             break
@@ -1631,11 +1616,10 @@ periodic_table = {
 }
 
 
-#==================MAIN==================
 if __name__ == '__main__':
     test = False
     infodict, energies = calc_analyser()
-    if not 'SINGLE_POINT' in infodict['geomet'][2]:
+    if 'SINGLE_POINT' not in infodict['geomet'][2]:
         opt_energy_output(energies, get_molecular_gradient_norms())
         opt_geometry_output(cFour_geometries())
         test = check_if_finished()
