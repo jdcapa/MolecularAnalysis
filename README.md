@@ -13,7 +13,7 @@ Installation *(not yet working)*
 
 Simply use pip to install the c4 script:
 
-    $ pip install https://github.com/jdcapa/cfour_monitoring
+    $ pip install https://github.com/jdcapa/CfourMonitoring
 
 Usage
 -----
