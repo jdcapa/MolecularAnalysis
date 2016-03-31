@@ -36,14 +36,9 @@ Roadmap
 
 Features for the next version update:
 
-    * fix: basis special
-
-    * add: DPT and DBOC support
-
-    * add: mrcc support
-
-    * add: FINDIF support
-
-    * add: VPT2 support
-
-    * add: routine that prints out optimisation summary with specific parameter
+- [ ] fix basis special
+- [ ] add DPT and DBOC support
+- [ ] add mrcc support
+- [ ] add FINDIF support
+- [ ] add VPT2 support
+- [ ] add routine that prints out optimisation summary with specific parameter
