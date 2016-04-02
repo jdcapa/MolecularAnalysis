@@ -1,8 +1,0 @@
-LICENSE
-MANIFEST.in
-setup.cfg
-setup.py
-c4.egg-info/PKG-INFO
-c4.egg-info/SOURCES.txt
-c4.egg-info/dependency_links.txt
-c4.egg-info/top_level.txt
