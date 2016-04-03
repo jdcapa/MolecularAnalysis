@@ -6,14 +6,12 @@ This is a small script which allows for monitoring of a Cfour
 Since they usually take a while, one might use this little programme to check
  on a calculation.
 
-Installation *(not yet working)*
+Installation
 ------------
 
-**Requirements:** Python 2.6, pip, cfour
+**Requirements:** Python 2.6, cfour
 
-Simply use pip to install the c4 script:
-
-    $ pip install https://github.com/jdcapa/CfourMonitoring
+Simply put the executable c4 script in a folder reached by your `$PATH` variable.
 
 Usage
 -----
