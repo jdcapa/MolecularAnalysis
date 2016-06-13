@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
 """Rotates an XYZ coordinate into its principle axis frame."""
-import sys
 import os
+import re
+import sys
 import argparse
 from moleculartoolbox import printfunctions as PF
 from moleculartoolbox import Geometry
@@ -11,7 +13,7 @@ from moleculartoolbox import Geometry
 delete_tmp = False
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('xyz_file', metavar='XYZ File', type=str,
+parser.add_argument('input_file', metavar='Input File', type=str,
                     help='XYZ file')
 parser.add_argument('-o', '--output', action='store', dest="xyz_out_file",
                     type=str, default='',
@@ -35,26 +37,51 @@ parser.add_argument('-v', "--verbose", action="store_true", default=False,
 args = parser.parse_args()
 
 
-# Does the input file exist?
-if not os.path.exists(args.xyz_file):
-    sys.exit("{} does not exist.".format(args.xyz_file))
-
+# input units
 if args.ibohr_flag:
     input_units = "Bohr"
 else:
     input_units = ""
 
+# Does the input file exist?
+if not os.path.exists(args.input_file):
+    sys.exit("{} does not exist.".format(args.input_file))
+
+# Type of file
+if ".xyz" in args.input_file:
+    # Standard xyz file
+    with open(args.input_file) as input_xyz:
+        inXYZ = input_xyz.read()
+    geometry = Geometry(inXYZ.split('\n')[2:], distance_units=input_units)
+elif ".out" in args.input_file:
+    # Orca Output file
+    with open(args.input_file) as input_orca:
+        inOrca = input_orca.read()
+    input_units = "Bohr"
+    from moleculartoolbox import OrcaOutput
+    if re.search("\.mp\d+\.", args.input_file):
+        basename = ".".join(args.input_file.split(".")[:-2])
+    else:
+        basename = ".".join(args.input_file.split(".")[:-1])
+    orca_out = OrcaOutput(os.getcwd(), basename)
+    geometry = orca_out.geometry
+
+elif ".trj" in args.input_file:
+    # Geometry optimisation trajectory
+    with open(args.input_file) as input_trj:
+        inTRJ = input_trj.read()
+    finalXYZ = re.split("\n\d+\n", inTRJ)[-1].split("\n")[1:]
+    geometry = Geometry(finalXYZ)
+else:
+    sys.exit("Unknown format")
+
+# Output units
 if args.obohr_flag:
     units = "bohr"
 else:
     units = "Angs"
 
-with open(args.xyz_file) as input_xyz:
-    inXYZ = input_xyz.read()
-
 # Move and rotate geometry to its principle axis frame
-geometry = Geometry(inXYZ.split('\n')[2:], distance_units=input_units)
-
 if args.verbose_flag:
     print(PF.print_rigid_rotational_constants(geometry.rot_prop))
 geometry.rotate_to_principal_axes_frame()
