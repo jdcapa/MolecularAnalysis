@@ -1,0 +1,86 @@
+# -*- coding: UTF-8 -*-
+"""Harmonic analysis for an Orca calculation"""
+import argparse
+from moleculartoolbox import Harmonic
+from moleculartoolbox import printfunctions as PF
+from moleculartoolbox import OrcaOutput
+from moleculartoolbox import Atom
+import os
+import sys
+
+# parser set-up
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('directory',
+                    metavar='Directory',
+                    type=str,
+                    help='Orca calculation directory')
+parser.add_argument('-b', "--basename",
+                    action='store',
+                    type=str, default="",
+                    dest="basename",
+                    help=('Provide the basename if there is more than one '
+                          'calculation.'))
+parser.add_argument('-s', "--scaling",
+                    action='store',
+                    type=float, default=1.0,
+                    dest="scaling",
+                    help=('Scales the real frequencies by a given factor '
+                          '(e.g. B3LYP/def2-TZVP 0.9671) [default: 1.0]'))
+parser.add_argument('-i', "--isotopes",
+                    nargs="+", action='store', type=str, dest="isotopes",
+                    help=('Substitute all related elements with the provided '
+                          'isotope, e.g. 13C. This can also be a list of '
+                          'isotopes'))
+parser.add_argument('-v', '--vib',
+                    action="store_true",
+                    default=False,
+                    dest="vib_write_flag",
+                    help=('Writes an <basename><iso>.vib file containing the '
+                          'displacement vectors of each vibration '
+                          '[default: False]'))
+parser.add_argument('-csv', '--csv',
+                    action="store_true",
+                    default=False,
+                    dest="csv_write_flag",
+                    help=('Writes an <basename><iso>.csv file containing an IR'
+                          ' stick-spectrum [default: False]'))
+
+
+args = parser.parse_args()
+
+if __name__ == '__main__':
+    # Orca job set-up
+    if os.path.exists(args.directory):
+        orca_job = OrcaOutput(args.directory, args.basename)
+    else:
+        sys.exit("The {} does not exist.".format(args.directory))
+    if not orca_job.has_hessian:
+        sys.exit("No Hessian found")
+    dip_der = orca_job.read_orca_dipole_derivative()
+    geometry = orca_job.geometry
+
+    # Isotope set-up
+    iso_string = ""
+    if args.isotopes:
+        substitutions = {}
+        iso_string = "_iso_" + "-".join(args.isotopes)
+        for isotope in args.isotopes:
+            element = Atom(isotope).element
+            if element not in substitutions:
+                substitutions[element] = isotope
+        geometry.atoms = geometry.isotopic_substitution(substitutions)
+
+    harm = Harmonic(geometry, orca_job.hessian, dipole_derivatives=dip_der)
+    # 1. Rotational analysis
+    print(PF.print_rigid_rotational_constants(geometry.rot_prop))
+    # 2. Print and save the stick spectrum
+    print(PF.print_harmonics(harm, args.scaling))
+    if args.csv_write_flag:
+        csv_filename = orca_job.basename + iso_string + ".csv"
+        with open(os.path.join(orca_job.directory, csv_filename), 'w') as csv:
+            csv.write(PF.csv_harmonics(harm, args.scaling))
+    # 3. Write the displacements
+    if args.vib_write_flag:
+        vib_filename = orca_job.basename + iso_string + ".vib"
+        with open(os.path.join(orca_job.directory, vib_filename), 'w') as vib:
+            vib.write(PF.print_cartesian_diplacements(harm, "Angs"))

@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+"""Rotates an XYZ coordinate into its principle axis frame."""
+import sys
+import os
+import argparse
+from moleculartoolbox import printfunctions as PF
+from moleculartoolbox import Geometry
+
+
+# Globals
+delete_tmp = False
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('xyz_file', metavar='XYZ File', type=str,
+                    help='XYZ file')
+parser.add_argument('-o', '--output', action='store', dest="xyz_out_file",
+                    type=str, default='',
+                    help='The output file name'
+                    ' Default: Sum_formula.xyz')
+parser.add_argument('-f', "--force", action="store_true", default=False,
+                    dest="overwrite_flag", help='Overwrites the xyz filename. '
+                    'Default: False')
+parser.add_argument('-ib', "--ibohr", action="store_true", default=False,
+                    dest="ibohr_flag", help='Reads the XYZ in bohr units. '
+                    'Default: False')
+parser.add_argument('-ob', "--obohr", action="store_true", default=False,
+                    dest="obohr_flag", help='Returns XYZ in bohr units. '
+                    'Default: False')
+parser.add_argument('-p', '--precision', action='store', dest="precision",
+                    type=int, default=9,
+                    help='The precision of the output xyz geometry'
+                    ' Default: 9')
+parser.add_argument('-v', "--verbose", action="store_true", default=False,
+                    dest="verbose_flag", help='Prints more detail')
+args = parser.parse_args()
+
+
+# Does the input file exist?
+if not os.path.exists(args.xyz_file):
+    sys.exit("{} does not exist.".format(args.xyz_file))
+
+if args.ibohr_flag:
+    input_units = "Bohr"
+else:
+    input_units = ""
+
+if args.obohr_flag:
+    units = "bohr"
+else:
+    units = "Angs"
+
+with open(args.xyz_file) as input_xyz:
+    inXYZ = input_xyz.read()
+
+# Move and rotate geometry to its principle axis frame
+geometry = Geometry(inXYZ.split('\n')[2:], distance_units=input_units)
+
+if args.verbose_flag:
+    print(PF.print_rigid_rotational_constants(geometry.rot_prop))
+geometry.rotate_to_principal_axes_frame()
+
+
+# Determine file name
+if args.xyz_out_file:
+    new_filname = args.xyz_out_file
+else:
+    for i in range(10):
+        if i:
+            add = "_{}".format(i)
+        else:
+            add = ""
+        new_filname = geometry.sum_formula() + add + ".xyz"
+        if not os.path.exists(new_filname):
+            break
+
+# Write XYZ file
+if (not os.path.exists(new_filname) or args.overwrite_flag):
+    with open(new_filname, 'w') as new_xyz:
+        new_xyz.write("{}\nz2x in {}\n".format(len(geometry.atoms), units))
+        for atom in geometry.atoms:
+            new_xyz.write(atom.print_cartesian(args.precision, units) + '\n')
+            print(atom.print_cartesian(args.precision, units), "M ", atom.mass)
+else:
+    sys.exit("{} exists.".format(new_filname))
