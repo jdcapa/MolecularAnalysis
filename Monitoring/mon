@@ -1,4 +1,9 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
+"""
+Script which allows for monitoring of an SCF/MP2/CCSD/CCSD(T) as well as DFT
+ geometry optimisation or a vibrational calculation for both Cfour and Orca.
+"""
 
 import re
 import sys
@@ -8,18 +13,12 @@ import os
 import subprocess
 from collections import OrderedDict
 
-program_description = """
-Script which allows for monitoring of a Cfour SCF/MP2/CCSD/CCSD(T)
-geometry optimisation or a vibrational calculation.
-This is a small standalone version separated from all the large classes.
-"""
-
 # parser set-up
-parser = argparse.ArgumentParser(description=program_description)
+parser = argparse.ArgumentParser(description=__doc__)
+
 parser.add_argument('out_File',
                     metavar='Output file',
-                    type=str, default="OUT",
-                    help='cfour output file [default: OUT]')
+                    type=str, help='Cfour/Orca Output file')
 parser.add_argument('-s', "--short",
                     action="store_true",
                     default=False,
@@ -70,10 +69,10 @@ def check_if_finished():
 
     if ('xprops finished' in check_string or
             "Zero-point vibrational energy" in check_string):
-        print "Calculation terminated successfully."
+        print("Calculation terminated successfully.")
         return True
     else:
-        print "Calculation is not finished yet..."
+        print("Calculation is not finished yet...")
         return False
 
 
@@ -85,18 +84,18 @@ def time_info():
     import datetime
 
     if not os.path.exists(os.path.join(outfile_directory, 'FILES')):
-        print "No timing information (FILES file missing)"
+        print("No timing information (FILES file missing)")
         return
     start_time = os.path.getmtime(os.path.join(outfile_directory, 'FILES'))
     last_change = os.path.getmtime(outfile)
     running_time = last_change - start_time
-    print "Start time:  {0}".format(time.strftime("%d/%m/%Y %H:%M:%S",
-                                                  time.localtime(start_time)))
+    print("Start time:  {0}".format(time.strftime("%d/%m/%Y %H:%M:%S",
+                                                  time.localtime(start_time))))
 
-    print "Last Change: {0} (running for {1})".format(
+    print("Last Change: {0} (running for {1})".format(
         time.strftime("%d/%m/%Y %H:%M:%S",
                       time.localtime(last_change)),
-        datetime.timedelta(seconds=running_time))
+        datetime.timedelta(seconds=running_time)))
 
 
 def get_calc_info():
@@ -108,21 +107,21 @@ def get_calc_info():
     except:
         sys.exit('No output file to process.')
 
-    infodict = {"level":    ["CALCLEVEL", "ICLLVL", ""],
-                "basis":    ["BASIS", "IBASIS", ""],
-                "charge":   ["CHARGE", "ICHRGE", ""],
-                "mult":     ["MULTIPLICTY", "IMULTP", ""],
-                "ref":      ["REFERENCE", "IREFNC", ""],
-                "geomet":   ["GEO_METHOD", "INR", ""],
-                "geoconv":  ["GEO_CONV", "ICONTL", ""],
-                "vib":      ["VIBRATION", "IVIB", ""],
-                "anharm":   ["ANHARMONIC", "IANHAR", ""],
-                "frozen":   ["FROZEN_CORE", "IFROCO", ""],
-                "dropmo":   ["DROPMO", "IDRPMO", ""]
+    infodict = {"level": ["CALCLEVEL", "ICLLVL", ""],
+                "basis": ["BASIS", "IBASIS", ""],
+                "charge": ["CHARGE", "ICHRGE", ""],
+                "mult": ["MULTIPLICTY", "IMULTP", ""],
+                "ref": ["REFERENCE", "IREFNC", ""],
+                "geomet": ["GEO_METHOD", "INR", ""],
+                "geoconv": ["GEO_CONV", "ICONTL", ""],
+                "vib": ["VIBRATION", "IVIB", ""],
+                "anharm": ["ANHARMONIC", "IANHAR", ""],
+                "frozen": ["FROZEN_CORE", "IFROCO", ""],
+                "dropmo": ["DROPMO", "IDRPMO", ""]
                 }
     # filling the empty fields
     for line in out:
-        for k in infodict.keys():
+        for k in list(infodict.keys()):
             if re.search("\s+{0}\s+{1}\s+".format(infodict[k][0],
                                                   infodict[k][1]), line):
                 # BOOM, Magic
@@ -144,36 +143,36 @@ def calc_analyser():
 
     if infodict['vib'][2] != 'NO':
         # calc_type = "VIB"
-        print "\nCalculation type: Frequency Analysis"
+        print("\nCalculation type: Frequency Analysis")
         if infodict['anharm'][2] == "OFF":
-            print "Method: Double harmonic approximation"
+            print("Method: Double harmonic approximation")
         else:
-            print "Method: %s" % infodict['anharm'][2]
+            print("Method: %s" % infodict['anharm'][2])
 
     elif (infodict['geomet'][2] == "NR" or infodict['geomet'][2] == "TS"):
-        print "\nCalculation type: Optimisation (geometric convergens" + \
-            " crit.: 10E-{0} H)".format(infodict['geoconv'][2])
+        print("\nCalculation type: Optimisation (geometric convergens" +
+              " crit.: 10E-{0} H)".format(infodict['geoconv'][2]))
         # calc_type = "OPT"
 
     elif "SINGLE_POINT" in infodict['geomet'][2]:
-        print "\nCalculation type: Single Point Energy"
+        print("\nCalculation type: Single Point Energy")
         # calc_type = "SINGLE_POINT"
     else:
-        print "Infodict:"
-        for key, value in infodict.iteritems():
-            print key, value[2]
+        print("Infodict:")
+        for key, value in infodict.items():
+            print(key, value[2])
         sys.exit("Calculation type unknown")
 
-    print "Level of theory: {0}/{1} with {2} ".format(infodict['level'][2],
+    print("Level of theory: {0}/{1} with {2} ".format(infodict['level'][2],
                                                       infodict['basis'][2],
-                                                      infodict['ref'][2]) + \
-        "reference"
-    print "Charge: %s, Multiplicity: %s\n" % (infodict['charge'][2],
-                                              infodict['mult'][2])
+                                                      infodict['ref'][2]) +
+          "reference")
+    print("Charge: %s, Multiplicity: %s\n" % (infodict['charge'][2],
+                                              infodict['mult'][2]))
 
     if (infodict['frozen'][2] != 'ON' and infodict['dropmo'][2] == 'NONE'):
-        print "No Frozen Core setting detected." + \
-            "ARE YOU SURE THIS IS WHAT YOU WANT?\n"
+        print("No Frozen Core setting detected." +
+              "ARE YOU SURE THIS IS WHAT YOU WANT?\n")
 
     energies = cFour_energies(infodict)
     return infodict, energies
@@ -211,7 +210,7 @@ def cFour_energies(infodict):
                 if len(iter_energy) < 3:
                     iter_energy.append(0.0)
                 if len(iter_energy) > 3:
-                    print 'Check energy parsing: iter_energy =', iter_energy
+                    print('Check energy parsing: iter_energy =', iter_energy)
                     sys.exit()
                 energies.append(iter_energy)
                 iter_energy = []
@@ -414,10 +413,10 @@ def opt_energy_output(energies, molecular_gradient_norms):
     formats energies to a nice list output
     '''
     if not energies:
-        print "No energies found as of yet."
+        print("No energies found as of yet.")
         return
     if energies and not energies[0]:
-        print "No energies found as of yet."
+        print("No energies found as of yet.")
         return
 
     columns = ["Iter"]
@@ -425,7 +424,7 @@ def opt_energy_output(energies, molecular_gradient_norms):
     s_E_CCSD = "E(CCSD)/a.u."
     s_E_CCSD_T = "E(CCSD(T))/a.u."
 
-    s_p_Diff = u"-lg|\u0394E|"  # -lg(DeltaE)
+    s_p_Diff = "-lg|\u0394E|"  # -lg(DeltaE)
     s_MolGrad = "|Grad|/a.u."
 
     # What do we have in energies
@@ -447,25 +446,25 @@ def opt_energy_output(energies, molecular_gradient_norms):
         columns.append(s_p_Diff)
         columns.append(s_MolGrad)
     else:
-        print "No energy information."
+        print("No energy information.")
         return
 
     number_of_data_columns = len(columns) - 3
 
     # Write header and deco
-    header = u"{:<4}%s {:>7} {:>10}" % ("  {:>14}" * number_of_data_columns)
+    header = "{:<4}%s {:>7} {:>10}" % ("  {:>14}" * number_of_data_columns)
     header = header.format(*columns)
     deco = ""
     for i in range(len(header)):
-        deco += u"\u2014"
-    print header.encode('utf-8')
+        deco += "\u2014"
+    print(header.encode('utf-8'))
 
     # fset up iterations range
 
     if (short_flag and len(energies) > 6):
         iterations = [0, 1, 2, -3, -2, -1]
     else:
-        iterations = range(len(energies))
+        iterations = list(range(len(energies)))
 
     # let's build the energy output
     energy_output_string = deco
@@ -473,9 +472,9 @@ def opt_energy_output(energies, molecular_gradient_norms):
     for it, i in enumerate(iterations):
         # In case we use the shortened list
         if (short_flag and i == -3):
-            intermission = u"\n{0:^4}%s {0:^7} {0:^10}" % (
+            intermission = "\n{0:^4}%s {0:^7} {0:^10}" % (
                 "  {0:^14}" * number_of_data_columns)
-            energy_output_string += intermission.format(u"\u22EE")
+            energy_output_string += intermission.format("\u22EE")
 
         # Here comes the stuff that is the same for everything
         line = "\n{:< 4,d}%s" % ("  {:> 14,.9f}" * number_of_data_columns)
@@ -504,13 +503,14 @@ def opt_energy_output(energies, molecular_gradient_norms):
         try:
             try:
                 if (i < 0 and len(molecular_gradient_norms) < len(energies)):
-                    grad = "  {:>8,.7f}".format(molecular_gradient_norms[i+1])
+                    grad = "  {:>8,.7f}".format(
+                        molecular_gradient_norms[i + 1])
                 else:
                     grad = "  {:>8,.7f}".format(molecular_gradient_norms[i])
             except:
                 grad = " {0:>7}".format("   -  ")
             energy_output_string += line.format(iteration, *e_list) + \
-                u"  {0:>7}".format(log_diff) + \
+                "  {0:>7}".format(log_diff) + \
                 grad
         except:
             line = "\n{:< 4,d}  {:>14,.9f}%s" % (
@@ -524,8 +524,8 @@ def opt_energy_output(energies, molecular_gradient_norms):
                 " {0:>7}".format(log_diff) +  \
                 " {0:>7}".format("   -  ")
 
-    print energy_output_string.encode('utf-8')
-    print deco.encode('utf-8') + '\n'
+    print(energy_output_string.encode('utf-8'))
+    print(deco.encode('utf-8') + '\n')
 
 
 def opt_geometry_output(geometries):
@@ -540,39 +540,39 @@ def opt_geometry_output(geometries):
     for i, valuepair in enumerate(geometries[0]):
         output_array.append([valuepair[0], valuepair[1], geometries[-1][i][1]])
 
-    print "Change of geometry during the optimisation:\n"
-    header = u"{0:<10} {1:>12} \u27F6 {2:>12}".format(
+    print("Change of geometry during the optimisation:\n")
+    header = "{0:<10} {1:>12} \u27F6 {2:>12}".format(
         "Parameter", "Old value", "New value")
-    print header.encode('utf-8')
-    deco = u"\u2014" * len(header)
-    print deco.encode('utf-8')
+    print(header.encode('utf-8'))
+    deco = "\u2014" * len(header)
+    print(deco.encode('utf-8'))
 
-    row_format = u"{0:<10} {1: > 12,.6f} \u27F6 {2: > 12,.6f}"
+    row_format = "{0:<10} {1: > 12,.6f} \u27F6 {2: > 12,.6f}"
     for element in output_array:
-        print row_format.format(*element).encode('utf-8')
-    print deco.encode('utf-8') + "\n"
+        print(row_format.format(*element).encode('utf-8'))
+    print(deco.encode('utf-8') + "\n")
 
 
 def sp_energy_output(energies):
     '''
     prints the Energy components of a single point calculation
     '''
-    print 'Energies:'
+    print('Energies:')
     energy_array = [x for x in energies[0] if x != 0.0]
     if len(energy_array) > 0:
-        print "SCF energy E[SCF]         = {:.10f}".format(energy_array[0])
+        print("SCF energy E[SCF]         = {:.10f}".format(energy_array[0]))
     if len(energy_array) > 1:
-        print "CCSD energy E[CCSD]       = {:.10f}".format(energy_array[1])
+        print("CCSD energy E[CCSD]       = {:.10f}".format(energy_array[1]))
     if len(energy_array) > 2:
-        print "CCSD(T) energy E[CCSD(T)] = {:.10f}".format(energy_array[2])
+        print("CCSD(T) energy E[CCSD(T)] = {:.10f}".format(energy_array[2]))
 
 
 def vib_output(vibrations):
     '''
     prints harmonic vibrations
     '''
-    print "\nVibrations:"
-    for key, value in vibrations.iteritems():
+    print("\nVibrations:")
+    for key, value in vibrations.items():
         imaginary_flag = False
         vib = value[0]
         if "i" in vib:
@@ -582,8 +582,8 @@ def vib_output(vibrations):
         if imaginary_flag:
             vib += "i"
         vib = vib.split(".")
-        print u" \u03BD_{:02d} = {:>5}.{:<3} cm\u207B\u00B9".format(int(key),
-                                                                    *vib)
+        print(" \u03BD_{:02d} = {:>5}.{:<3} cm\u207B\u00B9".format(int(key),
+                                                                   *vib))
 
 
 def check_vib_progress():
@@ -592,7 +592,7 @@ def check_vib_progress():
     '''
     disp = int(
         simon_asks('grep "CPHF coefficients" %s | wc -l' % outfile).strip())
-    print "\n%i displacements were done." % disp
+    print("\n%i displacements were done." % disp)
 
 
 def cpu_temperature():
@@ -614,8 +614,8 @@ def cpu_temperature():
             simon_asks("cat %stemp1_input" % temp_folder)) / 1000.0
         temp1_crit = float(
             simon_asks("cat %stemp1_crit" % temp_folder)) / 1000.0
-        return u"{0:.0f}\u00B0C ".format(temp1_input) + \
-            u"(Critical temp.: {0:.0f}\u00B0C)".format(temp1_crit)
+        return "{0:.0f}\u00B0C ".format(temp1_input) + \
+            "(Critical temp.: {0:.0f}\u00B0C)".format(temp1_crit)
     else:
         return "unknown"
 
@@ -658,7 +658,7 @@ def write_vib_file(vibrations):
         return False
     format_string = '{:<3} ' + 6 * '{:>13,.9f} ' + '\n'
     with open(os.path.join(outfile_directory, "vib.xyz"), 'w') as vib_file:
-        for key, value in vibrations.iteritems():
+        for key, value in vibrations.items():
             geometry = value[1]
             vib_file.write(
                 '{0:d}\nv{1:d} = {2} cm**-1\n'.format(len(geometry),
@@ -1635,11 +1635,11 @@ if __name__ == '__main__':
                 vib_output(vibrations)
                 if vib_write_flag:
                     write_vib_file(vibrations)
-                print "\nZero-point Energy: " + \
-                    "{0:.2f} kJ/mol".format(get_zero_point_energy())
+                print("\nZero-point Energy: " +
+                      "{0:.2f} kJ/mol".format(get_zero_point_energy()))
                 test = True
     if not test:
-        print "\nCurrent CPU status:"
-        print u"Temp:     {0}".format(cpu_temperature()).encode('utf-8')
-        # print "Load:     {.1f}\%".format(cpu_load())
-        print "used Mem: {}".format(used_mem())
+        print("\nCurrent CPU status:")
+        print("Temp:     {0}".format(cpu_temperature()).encode('utf-8'))
+        # print ("Load:     {.1f}\%".format(cpu_load()))
+        print("used Mem: {}".format(used_mem()))
