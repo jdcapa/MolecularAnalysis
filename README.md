@@ -18,7 +18,7 @@ cd MolecularAnalysis
 Execute the install script with the path to your `bin` folder.
 
 ```
-python3 install.py $HOME/.local/bin
+python3 install.py ~/.local/bin
 ```
 
 This will copy the scripts to the specified folder which should be included in your $PATH environment. In the following, a short description of the scripts are provided. Access additional detail through the following command:
