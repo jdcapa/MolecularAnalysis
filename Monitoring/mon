@@ -54,6 +54,31 @@ def write_trajectory(geometries, energies, basename):
         trj.write(trj_str)
 
 
+def mon_header(job):
+    """Analyse the calculation and decides what to do next."""
+
+    type_mapping = {'Energy_Calc': "Single-point energy",
+                    'Geo_Opt': "Geometry optimisation",
+                    'Gradient_Calc': "Gradient calculation",
+                    'Hessian_Calc': "Hessian calculation"}
+    infodict = job.get_calc_info()
+    out = ""
+    out += "\nCalculation type: {}".format(type_mapping[infodict["calctype"]])
+    out += "\n\tSCF convergence crit.: 10E-{} H".format(infodict["scfconv"])
+    if infodict["calctype"] == "Geo_Opt":
+        out += "\n\Geometry convergence crit.: "
+        out += "10E-{} H".format(infodict["geoconv"])
+
+    out += "\nLevel of theory: {0}/{1} with {2} reference.".format(
+        infodict['method'], infodict['basis'], infodict['ref'])
+
+    out += "\nCharge: {}, Multiplicity: {}".format(infodict['charge'],
+                                                   infodict['mult'])
+
+    # Add Frozen Core analysis
+    return out
+
+
 def orca_or_cfour(output_file):
     """Determine the programme used."""
     max_num_read = 100
@@ -74,14 +99,21 @@ if __name__ == '__main__':
     base_dir = os.path.dirname(ARGS.outfile)
     base_dir = base_dir if base_dir else os.getcwd()
 
+    # Determine the Quantum Chem Programme
     c4_or_orca = orca_or_cfour(ARGS.outfile)
-    if c4_or_orca == "Unknown":
+    if c4_or_orca == "Orca":
+        job = OrcaOutput(base_dir)
+    elif c4_or_orca == "Cfour":
+        # job = CfourOutput(base_dir)
+        pass
+    else:
         sys.exit("{} does not look like a valid output.".format(ARGS.outfile))
-    elif c4_or_orca == "Orca":
-        orca_job = OrcaOutput(base_dir)
-        basename = orca_job.basename
-        geometries = orca_job.get_xyz_geometries()
-        energies = orca_job.get_energies()
 
+    # Analyse the output
+    basename = job.basename
+    geometries = job.get_xyz_geometries()
+    energies = job.energies()
+
+    print(mon_header(job))
     if ARGS.opt_write_flag:
         write_trajectory(geometries, energies, basename)
