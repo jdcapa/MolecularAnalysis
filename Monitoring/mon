@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
+"""
+Script which allows for monitoring of an SCF/MP2/CCSD/CCSD(T) as well as DFT
+ geometry optimisation or a vibrational calculation for both Cfour and Orca.
+"""
+
+import os
+# import re
+import sys
+import argparse
+import numpy as np
+# from moleculartoolbox import printfunctions as PF
+from moleculartoolbox import OrcaOutput
+# from chemphysconst import Constants
+
+
+# parser set-up
+parser = argparse.ArgumentParser(description=__doc__)
+
+parser.add_argument('outfile',
+                    metavar='Output file',
+                    type=str, help='Cfour/Orca Output file')
+parser.add_argument('-s', "--short",
+                    action="store_true",
+                    default=False,
+                    dest="short_flag",
+                    help='Keeps the output to a minimum (default: False)')
+parser.add_argument('-o', '--opt',
+                    action="store_true",
+                    default=False,
+                    dest="opt_write_flag",
+                    help='Writes an opt.xyz file containing the ' +
+                    'geometry of each iteration (default: False)')
+parser.add_argument('-v', '--vib',
+                    action="store_true",
+                    default=False,
+                    dest="vib_write_flag",
+                    help='Writes an vib.xyz file containing the ' +
+                    'displacement vectors of each vibration (default: False)')
+
+ARGS = parser.parse_args()
+
+
+def write_trajectory(geometries, energies, basename):
+    """Write the geometries into an trj.xyz file."""
+    trj_str = ""
+    energies = energies.tolist()
+    if len(energies) == len(geometries) - 1:
+        energies.append(energies[-1])
+    for i, geometry in enumerate(geometries):
+        trj_str += geometry.xyz_file_string("E = {:.9f}".format(energies[i]))
+    with open(basename + ".trj.xyz", "w") as trj:
+        trj.write(trj_str)
+
+
+def orca_or_cfour(output_file):
+    """Determine the programme used."""
+    max_num_read = 100
+    with open(output_file) as outf:
+        for i, line in enumerate(outf):
+            if "O   R   C   A" in line:
+                return "Orca"
+            if "CFOUR" in line:
+                return "Cfour"
+            if i > max_num_read:
+                break
+    return "Unknown"
+
+
+if __name__ == '__main__':
+    if not os.path.exists(ARGS.outfile):
+        sys.exit("Cannot find {}.".format(ARGS.outfile))
+    base_dir = os.path.dirname(ARGS.outfile)
+    base_dir = base_dir if base_dir else os.getcwd()
+
+    c4_or_orca = orca_or_cfour(ARGS.outfile)
+    if c4_or_orca == "Unknown":
+        sys.exit("{} does not look like a valid output.".format(ARGS.outfile))
+    elif c4_or_orca == "Orca":
+        orca_job = OrcaOutput(base_dir)
+        basename = orca_job.basename
+        geometries = orca_job.get_xyz_geometries()
+        energies = orca_job.get_energies()
+
+    if ARGS.opt_write_flag:
+        write_trajectory(geometries, energies, basename)
