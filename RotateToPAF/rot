@@ -66,7 +66,7 @@ elif ".out" in args.input_file:
     orca_out = OrcaOutput(os.getcwd(), basename)
     geometry = orca_out.geometry
 
-elif ".trj" in args.input_file:
+elif (".trj" in args.input_file or ".opt.xyz" in args.input_file):
     # Geometry optimisation trajectory
     with open(args.input_file) as input_trj:
         inTRJ = input_trj.read()
