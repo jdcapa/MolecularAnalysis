@@ -9,8 +9,8 @@ import os
 # import re
 import sys
 import argparse
-import numpy as np
-# from moleculartoolbox import printfunctions as PF
+# import numpy as np
+from moleculartoolbox import printfunctions as PF
 from moleculartoolbox import OrcaOutput
 # from chemphysconst import Constants
 
@@ -61,19 +61,19 @@ def mon_header(job):
                     'Geo_Opt': "Geometry optimisation",
                     'Gradient_Calc': "Gradient calculation",
                     'Hessian_Calc': "Hessian calculation"}
-    infodict = job.get_calc_info()
+    infodict = job.get_Calc_info()
     out = ""
     out += "\nCalculation type: {}".format(type_mapping[infodict["calctype"]])
-    out += "\n\tSCF convergence crit.: 10E-{} H".format(infodict["scfconv"])
+    out += "\nSCF convergence crit.: {} Eh".format(infodict["scfconv"])
     if infodict["calctype"] == "Geo_Opt":
-        out += "\n\Geometry convergence crit.: "
-        out += "10E-{} H".format(infodict["geoconv"])
+        out += "\nGeometry convergence crit.: "
+        out += "{} Eh".format(infodict["geoconv"])
 
     out += "\nLevel of theory: {0}/{1} with {2} reference.".format(
         infodict['method'], infodict['basis'], infodict['ref'])
 
-    out += "\nCharge: {}, Multiplicity: {}".format(infodict['charge'],
-                                                   infodict['mult'])
+    out += "\nCharge: {}, Multiplicity: {}\n\n".format(infodict['charge'],
+                                                       infodict['mult'])
 
     # Add Frozen Core analysis
     return out
@@ -112,8 +112,9 @@ if __name__ == '__main__':
     # Analyse the output
     basename = job.basename
     geometries = job.get_xyz_geometries()
-    energies = job.energies()
+    energies = job.energies
 
     print(mon_header(job))
+    print(PF.print_optimisation_sumary(energies, ARGS.short_flag))
     if ARGS.opt_write_flag:
         write_trajectory(geometries, energies, basename)
