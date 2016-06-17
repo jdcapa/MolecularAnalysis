@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 """
-Script which allows for monitoring of an SCF/MP2/CCSD/CCSD(T) as well as DFT
- geometry optimisation or a vibrational calculation for both Cfour and Orca.
+Script which monitors SCF/MP2/CCSD/CCSD(T) as well as DFT
+ geometry optimisations for Cfour and Orca.
 """
 
 import os
-# import re
 import sys
+import time
 import argparse
-# import numpy as np
-from moleculartoolbox import printfunctions as PF
 from moleculartoolbox import OrcaOutput
+# from moleculartoolbox import CfourOutput
 from moleculartoolbox import Energy
-# from chemphysconst import Constants
+from moleculartoolbox import printfunctions as PF
 
 
 # parser set-up
@@ -26,19 +25,18 @@ parser.add_argument('-s', "--short",
                     action="store_true",
                     default=False,
                     dest="short_flag",
-                    help='Keeps the output to a minimum (default: False)')
+                    help='Keeps the output to a minimum [default: False].')
 parser.add_argument('-o', '--opt',
                     action="store_true",
                     default=False,
                     dest="opt_write_flag",
-                    help='Writes an opt.xyz file containing the ' +
-                    'geometry of each iteration (default: False)')
-parser.add_argument('-v', '--vib',
+                    help=('Writes an opt.xyz file containing the '
+                          'geometry of each iteration (default: False)'))
+parser.add_argument('-v', "--verbose",
                     action="store_true",
                     default=False,
-                    dest="vib_write_flag",
-                    help='Writes an vib.xyz file containing the ' +
-                    'displacement vectors of each vibration (default: False)')
+                    dest="verbose_flag",
+                    help='Prints extra output for debugging [default: False].')
 
 ARGS = parser.parse_args()
 
@@ -93,6 +91,11 @@ def orca_or_cfour(output_file):
                 break
     return "Unknown"
 
+def lprint(*arg):
+    """Print if ARGS.verbose_flag."""
+    if ARGS.verbose_flag:
+        print(*arg)
+
 
 if __name__ == '__main__':
     if not os.path.exists(ARGS.outfile):
@@ -103,20 +106,40 @@ if __name__ == '__main__':
     # Determine the Quantum Chem Programme
     c4_or_orca = orca_or_cfour(ARGS.outfile)
     if c4_or_orca == "Orca":
+        t0 = time.time()
         job = OrcaOutput(base_dir)
+        t1 = time.time()
+        lprint("Read output", "t = {}".format(t1 - t0))
     elif c4_or_orca == "Cfour":
         # job = CfourOutput(base_dir)
-        pass
+        sys.exit("Cfour not yet implemented. Will follow soon")
     else:
         sys.exit("{} does not look like a valid output.".format(ARGS.outfile))
 
     # Analyse the output
     basename = job.basename
-    geometries = job.get_xyz_geometries()
+    t0 = time.time()
+    geometries = job.geometries
+    t1 = time.time()
+    lprint("Read geometies", "t = {}".format(t1 - t0))
+    t0 = time.time()
     job_energy = Energy(job)
+    t1 = time.time()
+    lprint("Read energies", "t = {}".format(t1 - t0))
     energies = job_energy.energies
 
+    # Print Overview
     print(mon_header(job))
     print(PF.print_optimisation_sumary(energies, ARGS.short_flag))
+    # Add Geometry analysis
+
+    # Handle trj.xyz file
     if ARGS.opt_write_flag:
         write_trajectory(geometries, job_energy.total, basename)
+
+    import numpy as np
+    t = np.array([0.0, 0.0])
+    for geom in geometries:
+        for atom in geom.atoms:
+            t += atom.timing
+    print(t)
