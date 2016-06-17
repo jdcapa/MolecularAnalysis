@@ -12,6 +12,7 @@ import argparse
 # import numpy as np
 from moleculartoolbox import printfunctions as PF
 from moleculartoolbox import OrcaOutput
+from moleculartoolbox import Energy
 # from chemphysconst import Constants
 
 
@@ -112,9 +113,10 @@ if __name__ == '__main__':
     # Analyse the output
     basename = job.basename
     geometries = job.get_xyz_geometries()
-    energies = job.energies
+    job_energy = Energy(job)
+    energies = job_energy.energies
 
     print(mon_header(job))
     print(PF.print_optimisation_sumary(energies, ARGS.short_flag))
     if ARGS.opt_write_flag:
-        write_trajectory(geometries, energies, basename)
+        write_trajectory(geometries, job_energy.total, basename)
