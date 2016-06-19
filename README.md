@@ -27,7 +27,7 @@ This will copy the scripts to the specified folder which should be included in y
 <script> --help
 ```
 
-## `gopt` – geometry optimisation monitoring
+## gopt – geometry optimisation monitoring
 
 This is a small script which allows for monitoring of an **Orca/Cfour**
  SCF/MP2/CCSD/CCSD(T)/DFT geometry optimisation.
@@ -35,10 +35,10 @@ Since they usually take a while, one might use this little programme to check
  on a calculation.
 
 
-## `rot` – rotate to principle axis frame
+## rot – rotate to principle axis frame
 
-This little program reads a geometry from an `xyz`, `trj` or orca/cfour output file, provides a rigid-rotor analysis and rotates the xyz coordinates into its principle axis frame.
+This little program reads a geometry from an xyz, trj or orca/cfour output file, provides a rigid-rotor analysis and rotates the xyz coordinates into its principle axis frame.
 
-## `harmonic` – Hessian analysis
+## harmonic – Hessian analysis
 
 A set of routines that reads the Hessian of a frequency calculation. The output provides harmonic frequencies (incl. scaling), intensities, plotting of the normal modes, isotopic substitutions and a csv export functionality.
