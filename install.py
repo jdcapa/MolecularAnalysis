@@ -7,8 +7,8 @@ import shutil
 import sys
 
 # Scripts
-scripts = ["RotateToPAF/rot",
-           "Monitoring/mon",
+scripts = ["GeoOpt/gopt",
+           "RotateToPAF/rot",
            "HarmonicAnalysis/harmonics"]
 
 # parser set-up

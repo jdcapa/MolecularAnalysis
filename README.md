@@ -27,10 +27,10 @@ This will copy the scripts to the specified folder which should be included in y
 <script> --help
 ```
 
-# `mon` – monitoring
+# `gopt` – geometry optimisation monitoring
 
 This is a small script which allows for monitoring of an **Orca/Cfour**
- SCF/MP2/CCSD/CCSD(T)/DFT geometry optimisation or a vibrational calculations.
+ SCF/MP2/CCSD/CCSD(T)/DFT geometry optimisation.
 Since they usually take a while, one might use this little programme to check
  on a calculation.
 
