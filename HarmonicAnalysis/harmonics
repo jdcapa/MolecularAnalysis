@@ -5,28 +5,28 @@ import argparse
 from moleculartoolbox import Harmonic
 from moleculartoolbox import printfunctions as PF
 from moleculartoolbox import OrcaOutput
+from moleculartoolbox import CfourOutput
 from moleculartoolbox import Atom
 import os
 import sys
 
 # parser set-up
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('directory',
-                    metavar='Directory',
-                    type=str,
-                    help='Orca calculation directory')
-parser.add_argument('-b', "--basename",
-                    action='store',
-                    type=str, default="",
-                    dest="basename",
-                    help=('Provide the basename if there is more than one '
-                          'calculation.'))
+parser.add_argument('outfile',
+                    metavar='Output file',
+                    type=str, help='Cfour/Orca Output file')
 parser.add_argument('-s', "--scaling",
                     action='store',
                     type=float, default=1.0,
                     dest="scaling",
                     help=('Scales the real frequencies by a given factor '
                           '(e.g. B3LYP/def2-TZVP 0.9671) [default: 1.0]'))
+parser.add_argument('-b', "--basename",
+                    action='store',
+                    type=str, default="",
+                    dest="basename",
+                    help=('Provide the Orca basename if there is more than one'
+                          ' calculation.'))
 parser.add_argument('-i', "--isotopes",
                     nargs="+", action='store', type=str, dest="isotopes",
                     help=('Substitute all related elements with the provided '
@@ -46,42 +46,102 @@ parser.add_argument('-csv', '--csv',
                     help=('Writes an <basename><iso>.csv file containing an IR'
                           ' stick-spectrum [default: False]'))
 
+ARGS = parser.parse_args()
 
-args = parser.parse_args()
+
+def write_trajectory(geometries, energies, basename):
+    """Write the geometries into an trj.xyz file."""
+    trj_str = ""
+    energies = energies.tolist()
+    if len(energies) == len(geometries) - 1:
+        energies.append(energies[-1])
+    for i, geometry in enumerate(geometries):
+        trj_str += geometry.xyz_file_string("E = {:.9f}".format(energies[i]))
+    with open(basename + ".trj.xyz", "w") as trj:
+        trj.write(trj_str)
+
+
+def mon_header(job):
+    """Analyse the calculation and decides what to do next."""
+
+    type_mapping = {'Energy_Calc': "Single-point energy",
+                    'Geo_Opt': "Geometry optimisation",
+                    'Gradient_Calc': "Gradient calculation",
+                    'Hessian_Calc': "Hessian calculation"}
+    infodict = job.get_Calc_info()
+    out = ""
+    out += "\nCalculation type: {}".format(type_mapping[infodict["calctype"]])
+    out += "\nSCF convergence crit.: {} Eh".format(infodict["scfconv"])
+    if infodict["calctype"] == "Geo_Opt":
+        out += "\nGeometry convergence crit.: "
+        out += "{} Eh".format(infodict["geoconv"])
+
+    out += "\nLevel of theory: {0}/{1} with {2} reference.".format(
+        infodict['method'], infodict['basis'], infodict['ref'])
+
+    out += "\nCharge: {}, Multiplicity: {}\n\n".format(infodict['charge'],
+                                                       infodict['mult'])
+
+    # Add Frozen Core analysis
+    return out
+
+
+def orca_or_cfour(output_file):
+    """Determine the programme used."""
+    max_num_read = 100
+    with open(output_file) as outf:
+        for i, line in enumerate(outf):
+            if "O   R   C   A" in line:
+                return "Orca"
+            if "CFOUR" in line:
+                return "Cfour"
+            if i > max_num_read:
+                break
+    return "Unknown"
+
 
 if __name__ == '__main__':
-    # Orca job set-up
-    if os.path.exists(args.directory):
-        orca_job = OrcaOutput(args.directory, args.basename)
+    if not os.path.exists(ARGS.outfile):
+        sys.exit("Cannot find {}.".format(ARGS.outfile))
+    base_dir = os.path.dirname(ARGS.outfile)
+    base_dir = base_dir if base_dir else os.getcwd()
+
+    # Determine the Quantum Chem Programme
+    c4_or_orca = orca_or_cfour(ARGS.outfile)
+    if c4_or_orca == "Orca":
+        job = OrcaOutput(base_dir, ARGS.basename)
+    elif c4_or_orca == "Cfour":
+        job = CfourOutput(base_dir, ARGS.outfile)
     else:
-        sys.exit("The {} does not exist.".format(args.directory))
-    if not orca_job.has_hessian:
+        sys.exit("{} does not look like a valid output.".format(ARGS.outfile))
+
+    if not job.has_hessian:
         sys.exit("No Hessian found")
-    dip_der = orca_job.read_orca_dipole_derivative()
-    geometry = orca_job.geometry
+    dip_der = job.read_dipole_derivative()
+    geometry = job.geometry
 
     # Isotope set-up
     iso_string = ""
-    if args.isotopes:
+    if ARGS.isotopes:
         substitutions = {}
-        iso_string = "_iso_" + "-".join(args.isotopes)
-        for isotope in args.isotopes:
+        iso_string = "_iso_" + "-".join(ARGS.isotopes)
+        for isotope in ARGS.isotopes:
             element = Atom(isotope).element
             if element not in substitutions:
                 substitutions[element] = isotope
         geometry.atoms = geometry.isotopic_substitution(substitutions)
 
-    harm = Harmonic(geometry, orca_job.hessian, dipole_derivatives=dip_der)
+    harm = Harmonic(geometry, job.hessian, dipole_derivatives=dip_der)
     # 1. Rotational analysis
     print(PF.print_rigid_rotational_constants(geometry.rot_prop))
     # 2. Print and save the stick spectrum
-    print(PF.print_harmonics(harm, args.scaling))
-    if args.csv_write_flag:
-        csv_filename = orca_job.basename + iso_string + ".csv"
-        with open(os.path.join(orca_job.directory, csv_filename), 'w') as csv:
-            csv.write(PF.csv_harmonics(harm, args.scaling))
+    print(PF.print_harmonics(harm, ARGS.scaling))
+    if ARGS.csv_write_flag:
+        csv_filename = job.basename + iso_string + ".csv"
+        with open(os.path.join(job.directory, csv_filename), 'w') as csv:
+            csv.write(PF.csv_harmonics(harm, ARGS.scaling))
     # 3. Write the displacements
-    if args.vib_write_flag:
-        vib_filename = orca_job.basename + iso_string + ".vib"
-        with open(os.path.join(orca_job.directory, vib_filename), 'w') as vib:
+    if ARGS.vib_write_flag:
+        vib_filename = job.basename + iso_string + ".vib"
+        with open(os.path.join(job.directory, vib_filename), 'w') as vib:
             vib.write(PF.print_cartesian_diplacements(harm, "Angs"))
