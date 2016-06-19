@@ -10,7 +10,7 @@ import sys
 import time
 import argparse
 from moleculartoolbox import OrcaOutput
-# from moleculartoolbox import CfourOutput
+from moleculartoolbox import CfourOutput
 from moleculartoolbox import Energy
 from moleculartoolbox import printfunctions as PF
 
@@ -112,8 +112,10 @@ if __name__ == '__main__':
         t1 = time.time()
         lprint("Read output", "t = {}".format(t1 - t0))
     elif c4_or_orca == "Cfour":
-        # job = CfourOutput(base_dir)
-        sys.exit("Cfour not yet implemented. Will follow soon")
+        t0 = time.time()
+        job = CfourOutput(base_dir, ARGS.outfile)
+        t1 = time.time()
+        lprint("Read output", "t = {}".format(t1 - t0))
     else:
         sys.exit("{} does not look like a valid output.".format(ARGS.outfile))
 
