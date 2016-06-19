@@ -91,6 +91,7 @@ def orca_or_cfour(output_file):
                 break
     return "Unknown"
 
+
 def lprint(*arg):
     """Print if ARGS.verbose_flag."""
     if ARGS.verbose_flag:
@@ -136,10 +137,3 @@ if __name__ == '__main__':
     # Handle trj.xyz file
     if ARGS.opt_write_flag:
         write_trajectory(geometries, job_energy.total, basename)
-
-    import numpy as np
-    t = np.array([0.0, 0.0])
-    for geom in geometries:
-        for atom in geom.atoms:
-            t += atom.timing
-    print(t)
