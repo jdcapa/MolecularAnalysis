@@ -26,6 +26,12 @@ parser.add_argument('-s', "--short",
                     default=False,
                     dest="short_flag",
                     help='Keeps the output to a minimum [default: False].')
+parser.add_argument('-b', "--basename",
+                    action='store',
+                    type=str, default="",
+                    dest="basename",
+                    help=('Provide the Orca basename if there is more than one'
+                          ' calculation.'))
 parser.add_argument('-o', '--opt',
                     action="store_true",
                     default=False,
@@ -108,7 +114,7 @@ if __name__ == '__main__':
     c4_or_orca = orca_or_cfour(ARGS.outfile)
     if c4_or_orca == "Orca":
         t0 = time.time()
-        job = OrcaOutput(base_dir)
+        job = OrcaOutput(base_dir, ARGS.basename)
         t1 = time.time()
         lprint("Read output", "t = {}".format(t1 - t0))
     elif c4_or_orca == "Cfour":
