@@ -63,7 +63,7 @@ elif ".inp" in args.input_file:
     # Orca Input file
     basename = ".".join(args.input_file.split(".")[:-1])
     orca = OrcaOutput(os.getcwd(), basename, True)
-    geometry = orca_out.geometry
+    geometry = orca.geometry
 
 elif ".trj" in args.input_file:
     # Geometry optimisation trajectory
