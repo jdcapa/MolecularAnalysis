@@ -7,6 +7,7 @@ import sys
 import argparse
 from moleculartoolbox import printfunctions as PF
 from moleculartoolbox import Geometry
+from moleculartoolbox import OrcaOutput
 
 
 # Globals
@@ -36,34 +37,32 @@ parser.add_argument('-v', "--verbose", action="store_true", default=False,
                     dest="verbose_flag", help='Prints more detail')
 args = parser.parse_args()
 
-
-# input units
-if args.ibohr_flag:
-    input_units = "Bohr"
-else:
-    input_units = ""
-
 # Does the input file exist?
 if not os.path.exists(args.input_file):
     sys.exit("{} does not exist.".format(args.input_file))
 
 # Type of file
 if ".xyz" in args.input_file:
-    # Standard xyz file
+    # input units
+    if args.ibohr_flag:
+        input_units = "Bohr"
+    else:
+        input_units = ""
     with open(args.input_file) as input_xyz:
         inXYZ = input_xyz.read()
     geometry = Geometry(inXYZ.split('\n')[2:], distance_units=input_units)
 elif ".out" in args.input_file:
     # Orca Output file
-    with open(args.input_file) as input_orca:
-        inOrca = input_orca.read()
-    input_units = "Bohr"
-    from moleculartoolbox import OrcaOutput
     if re.search("\.mpi\d+\.", args.input_file):
         basename = ".".join(args.input_file.split(".")[:-2])
     else:
         basename = ".".join(args.input_file.split(".")[:-1])
     orca_out = OrcaOutput(os.getcwd(), basename)
+    geometry = orca_out.geometry
+elif ".inp" in args.input_file:
+    # Orca Input file
+    basename = ".".join(args.input_file.split(".")[:-1])
+    orca = OrcaOutput(os.getcwd(), basename, True)
     geometry = orca_out.geometry
 
 elif ".trj" in args.input_file:
