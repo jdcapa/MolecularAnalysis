@@ -59,7 +59,7 @@ elif ".out" in args.input_file:
         inOrca = input_orca.read()
     input_units = "Bohr"
     from moleculartoolbox import OrcaOutput
-    if re.search("\.mp\d+\.", args.input_file):
+    if re.search("\.mpi\d+\.", args.input_file):
         basename = ".".join(args.input_file.split(".")[:-2])
     else:
         basename = ".".join(args.input_file.split(".")[:-1])
