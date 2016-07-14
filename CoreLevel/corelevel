@@ -83,7 +83,7 @@ if __name__ == '__main__':
                 if geom.atoms[i].element == bond.split("-")[0]:
                     for atom in cn[i]:
                         if geom.is_bound(atom, i, 1.15):
-                            atoms.append(i)
+                            atoms.append(atom)
         atoms = list(set(atoms))
         print("filtering for atoms:", atoms)
         core_levels = orca_data.filter_orbitals(orb_pop,
