@@ -8,8 +8,10 @@ import sys
 
 # Scripts
 scripts = ["GeoOpt/gopt",
-           "RotateToPAF/rot",
-           "HarmonicAnalysis/harmonics"]
+           "XYZ/xyz",
+           "HarmonicAnalysis/harmonics",
+           "CoreLevel/corelevel"]
+
 
 # parser set-up
 parser = argparse.ArgumentParser(description=__doc__)
