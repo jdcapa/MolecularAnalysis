@@ -35,10 +35,20 @@ Since they usually take a while, one might use this little programme to check
  on a calculation.
 
 
-## rot – rotate to principle axis frame
+## xyz – extracts XYZ data for analysis/modification
 
-This little program reads a geometry from an xyz, trj or orca/cfour output file, provides a rigid-rotor analysis and rotates the xyz coordinates into its principle axis frame.
+This little program reads a geometry from an xyz, trj or orca/cfour output file, provides a rigid-rotor analysis can rotate the xyz coordinates into its principle axis frame or print a connection map (bonding) for pymol.
 
 ## harmonic – Hessian analysis
 
 A set of routines that reads the Hessian of a frequency calculation. The output provides harmonic frequencies (incl. scaling), intensities, plotting of the normal modes, isotopic substitutions and a csv export functionality.
+
+## corelevel – core-level molecular orbitals for analysis
+
+Reports energy of filtered core molecular orbitals.
+The analysis is based on an orca  Loewdin reduced orbital population analysis  which can be activated by including the following in the orca input file:
+```
+%output
+   Print[P_OrbPopMO_L]  1
+end
+```
