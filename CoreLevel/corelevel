@@ -86,7 +86,7 @@ if __name__ == '__main__':
                             if geom.is_bound(atom, i, 1.15):
                                 atoms.append(i)
         atoms = list(set(atoms))
-        print("filtering for atoms:", atoms)
+        print("filtering for atoms:", np.array(atoms, dtype=int))
         core_levels = orca_data.filter_orbitals(orb_pop,
                                                 orbital_type=ARGS.ao_type,
                                                 atoms=atoms)
