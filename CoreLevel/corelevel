@@ -81,13 +81,14 @@ if __name__ == '__main__':
         for bond in ARGS.bonds:
             for i in range(geom.nAtoms):
                 if geom.atoms[i].element == bond.split("-")[0]:
+                    print(i, geom.atoms[i].element)
                     for atom in cn[i]:
                         if geom.is_bound(atom, i, 1.15):
                             atoms.append(i)
         atoms = list(set(atoms))
         core_levels = orca_data.filter_orbitals(orb_pop,
                                                 orbital_type=ARGS.ao_type,
-                                                atoms=ARGS.atoms)
+                                                atoms=atoms)
     else:
         core_levels = orca_data.filter_orbitals(orb_pop,
                                                 orbital_type=ARGS.ao_type)
@@ -95,14 +96,27 @@ if __name__ == '__main__':
     # Core Level Orbital  Analysis
     cl_energies = []
     hartree2eV = CONST.hartree_energy(unit="eV")
-    print(" MO E [ev]  ")
+    print(" MO   E[ev]")
     for mo in core_levels:
-        print("{:04d} {.2f}".format(mo[0], mo[1] * hartree2eV))
+        print("{:04d} {:.2f}".format(mo[0], mo[1] * hartree2eV))
         cl_energies.append(mo[1])
-
-    cl_energies = np.array(cl_energies) * hartree2eV
-    print("\nNumber of {}-MOs: {}".format(ARGS.ao_type, len(core_levels)))
-    print("Average: {:.2f}".format(np.average(core_levels)))
-    print("StdDev: {:.2f}".format(np.std(core_levels)))
-    print("Min: {:.1f}, Max: {:.1f}".format(np.min(core_levels),
-                                            np.max(core_levels)))
+    if cl_energies:
+        cl_energies = np.array(cl_energies, dtype=np.float) * hartree2eV
+        print("\nNumber of {}-MOs: {}".format(ARGS.ao_type, len(cl_energies)))
+        print("Average: {:.2f}".format(np.average(cl_energies)))
+        print("StdDev: {:.2f}".format(np.std(cl_energies)))
+        print("Min: {:.1f}, Max: {:.1f}".format(np.min(cl_energies),
+                                                np.max(cl_energies)))
+        diff = np.abs(np.min(cl_energies) - np.max(cl_energies))
+        bins = np.linspace(np.min(cl_energies), np.max(cl_energies), 11)
+        freq = np.zeros((11), dtype=np.int)
+        for cl_energy in cl_energies:
+            for i, en in enumerate(bins):
+                # print(cl_energy, en - 0.05 * diff, )
+                if (cl_energy > en - 0.05 * diff and
+                        cl_energy <= en + 0.05 * diff):
+                    freq[i] += 1
+                    break
+        print("Frequency distribution (Binning)")
+        for i in range(11):
+            print("\t{:.2f}\t{}".format(bins[i], freq[i]))
