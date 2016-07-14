@@ -17,7 +17,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('input_file', metavar='Input File', type=str,
                     help='This can be an orca input/orca output/generic xyz or'
                          'trajectory file.')
-parser.add_argument('-o', '--output', action='store', dest="xyz_out_file",
+parser.add_argument('-o', '--output', action='store', dest="xyz_file",
                     type=str, default='',
                     help='The output file name. This file contains the (new) '
                          'geometry [Default: <sum formula>.xyz].')
@@ -29,11 +29,11 @@ parser.add_argument('-ib', "--ibohr", action="store_true", default=False,
                     '[Default: False]')
 parser.add_argument('-ob', "--obohr", action="store_true", default=False,
                     dest="obohr_flag", help='Returns XYZ in bohr units. '
-                    'Default: False')
+                    '[Default: False]')
 parser.add_argument('-p', '--precision', action='store', dest="precision",
                     type=int, default=9,
                     help='The precision of the output xyz geometry'
-                    ' Default: 9')
+                    ' [Default: 9]')
 parser.add_argument('-r', "--rotate", action="store_true", default=False,
                     dest="rotate_flag", help='Rotates the geometry into a '
                     'principle axis orientation [Default: False].')
@@ -49,7 +49,7 @@ parser.add_argument('-ct', '--connect-tol', action='store',
                          '[Default: 1.15].')
 parser.add_argument('-v', "--verbose", action="store_true", default=False,
                     dest="verbose_flag", help='Prints more detail')
-ARGS = parser.parse_ARGS()
+ARGS = parser.parse_args()
 
 if __name__ == '__main__':
     # Does the input file exist?
@@ -101,8 +101,8 @@ if __name__ == '__main__':
     geometry.rotate_to_principal_axes_frame()
 
     # Determine output file name
-    if ARGS.xyz_out_file:
-        new_filname = ARGS.xyz_out_file
+    if ARGS.xyz_file:
+        new_filname = ARGS.xyz_file
     else:
         for i in range(10):
             if i:
