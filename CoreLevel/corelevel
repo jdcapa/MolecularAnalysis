@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
+"""
+Reports energy of filtered core molecular orbitals.
+
+The analysis is based on an orca  Loewdin reduced orbital population analysis
+ which can be activated by including the following in the input file:
+    %%output
+       Print[P_OrbPopMO_L]  1
+    end
+
+Various filters are applied through options:
+"""
+import os
+import re
+import sys
+import argparse
+import numpy as np
+# from moleculartoolbox import printfunctions as PF
+# from moleculartoolbox import Geometry
+from moleculartoolbox import OrcaOutput
+from chemphysconst import Constants
+
+
+# Globals
+CONST = Constants()
+# delete_tmp = False
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('outfile', metavar='Output File', type=str,
+                    help=('Orca output file containing a Loewdin MO '
+                          'analysis'))
+parser.add_argument('-aot', '--AOtype', action='store', dest="ao_type",
+                    type=str, default='f',
+                    help='Filter the according to angular momentum of an '
+                         'atomic orbital Default: "f"')
+parser.add_argument('-e', '--elements', action='store', dest="elements",
+                    type=str, nargs='+',
+                    help='Filter according to one or more element symbols')
+parser.add_argument('-a', '--atom-numbers', action='store', dest="atoms",
+                    type=int, nargs='+',
+                    help='Filter according to selected atomic numbers '
+                         '(starting at no. 1 for the first atom).')
+parser.add_argument('-b', '--bonds', action='store', dest="bonds",
+                    type=str, nargs='+',
+                    help='Filter according to elements bound to other elements'
+                         ' (e.g. "Pt-O" would only return MOs of those Pt that'
+                         ' are bound to O ).')
+ARGS = parser.parse_args()
+
+
+if __name__ == '__main__':
+    # Does the input file exist?
+    if not os.path.exists(ARGS.outfile):
+        sys.exit("Cannot find {}.".format(ARGS.outfile))
+    base_dir = os.path.dirname(ARGS.outfile)
+    base_dir = base_dir if base_dir else os.getcwd()
+    if re.search("\.mpi\d+\.", ARGS.outfile):
+        basename = ".".join(ARGS.outfile.split(".")[:-2])
+    else:
+        basename = ".".join(ARGS.outfile.split(".")[:-1])
+    # Reading the orca output
+    orca_data = OrcaOutput(base_dir, basename)
+    orb_pop = orca_data.get_orbital_populations()
+
+    # Generating the relevant core level orbital list
+    if ARGS.elements:
+        core_levels = orca_data.filter_orbitals(orb_pop,
+                                                orbital_type=ARGS.ao_type,
+                                                elements=ARGS.elements)
+    elif ARGS.atoms:
+        core_levels = orca_data.filter_orbitals(orb_pop,
+                                                orbital_type=ARGS.ao_type,
+                                                atoms=ARGS.atoms)
+    elif ARGS.bonds:
+        if "-" not in ARGS.bonds[0]:
+            sys.exit("Bonding needs to be specified, e.g. 'O-H'")
+        atoms = []
+        geom = orca_data.geometry
+        cn = geom.closest_neighbours()
+        for bond in ARGS.bonds:
+            for i in range(geom.nAtoms):
+                if geom.atoms[i].element == bond.split("-")[0]:
+                    for atom in cn[i]:
+                        if geom.is_bound(atom, i, 1.15):
+                            atoms.append(i)
+        atoms = list(set(atoms))
+        core_levels = orca_data.filter_orbitals(orb_pop,
+                                                orbital_type=ARGS.ao_type,
+                                                atoms=ARGS.atoms)
+    else:
+        core_levels = orca_data.filter_orbitals(orb_pop,
+                                                orbital_type=ARGS.ao_type)
+
+    # Core Level Orbital  Analysis
+    cl_energies = []
+    hartree2eV = CONST.hartree_energy(unit="eV")
+    print(" MO E [ev]  ")
+    for mo in core_levels:
+        print("{:04d} {.2f}".format(mo[0], mo[1] * hartree2eV))
+        cl_energies.append(mo[1])
+
+    cl_energies = np.array(cl_energies) * hartree2eV
+    print("\nNumber of {}-MOs: {}".format(ARGS.ao_type, len(core_levels)))
+    print("Average: {:.2f}".format(np.average(core_levels)))
+    print("StdDev: {:.2f}".format(np.std(core_levels)))
+    print("Min: {:.1f}, Max: {:.1f}".format(np.min(core_levels),
+                                            np.max(core_levels)))
