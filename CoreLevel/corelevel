@@ -40,7 +40,7 @@ parser.add_argument('-e', '--elements', action='store', dest="elements",
 parser.add_argument('-a', '--atom-numbers', action='store', dest="atoms",
                     type=int, nargs='+',
                     help='Filter according to selected atomic numbers '
-                         '(starting at no. 1 for the first atom).')
+                         '(starting at no. 0 for the first atom).')
 parser.add_argument('-b', '--bonds', action='store', dest="bonds",
                     type=str, nargs='+',
                     help='Filter according to elements bound to other elements'
@@ -82,8 +82,9 @@ if __name__ == '__main__':
             for i in range(geom.nAtoms):
                 if geom.atoms[i].element == bond.split("-")[0]:
                     for atom in cn[i]:
-                        if geom.is_bound(atom, i, 1.15):
-                            atoms.append(atom)
+                        if geom.atoms[atom].element == bond.split("-")[1]:
+                            if geom.is_bound(atom, i, 1.15):
+                                atoms.append(i)
         atoms = list(set(atoms))
         print("filtering for atoms:", atoms)
         core_levels = orca_data.filter_orbitals(orb_pop,
