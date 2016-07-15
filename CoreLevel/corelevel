@@ -74,11 +74,26 @@ if __name__ == '__main__':
                                                 atoms=ARGS.atoms)
     elif ARGS.bonds:
         if "-" not in ARGS.bonds[0]:
-            sys.exit("Bonding needs to be specified, e.g. 'O-H'")
+            sys.exit("Bonding needs to be specified, e.g. 'O-H' or Pt-O-H")
         atoms = []
         geom = orca_data.geometry
         cn = geom.closest_neighbours()
-        for bond in ARGS.bonds:
+        bonds = [b.split("-") for b in ARGS.bonds]
+        for bond in bonds:
+            atoms = []
+            for bonding_element in reversed(bond):
+                if atoms:
+                    tmp = []
+                    for i in range(geom.nAtoms):
+                        for a in atoms:
+                            if geom.atoms[i].element == bonding_element:
+                                if geom.is_bound(a, i, 1.15):
+                                    tmp.append(i)
+                    atoms = tmp[:]
+                else:
+                    for i in range(geom.nAtoms):
+                        if geom.atoms[i].element == bonding_element:
+                            tmp.append(i)
             for i in range(geom.nAtoms):
                 if geom.atoms[i].element == bond.split("-")[0]:
                     for atom in cn[i]:
