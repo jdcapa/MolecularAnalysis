@@ -46,6 +46,10 @@ parser.add_argument('-b', '--bonds', action='store', dest="bonds",
                     help='Filter according to elements bound to other elements'
                          ' (e.g. "Pt-O" would only return MOs of those Pt that'
                          ' are bound to O ).')
+parser.add_argument('-pe', "--per-element", action="store_true", default=False,
+                    dest="per_element_flag", help='Requires -e <Element(s)> '
+                    'Returns an average MO-energy for each atom of a certain '
+                    'element [Default: False].')
 
 ARGS = parser.parse_args()
 
@@ -107,13 +111,13 @@ if __name__ == '__main__':
 
     # Core Level Orbital  Analysis
     cl_energies = []
-    hartree2eV = CONST.hartree_energy(unit="eV")
+    ha2eV = CONST.hartree_energy(unit="eV")
     print(" MO   E[ev]")
     for mo in core_levels:
-        print("{:04d} {:.2f}".format(mo[0], mo[1] * hartree2eV))
+        print("{:04d} {:.2f}".format(mo[0], mo[1] * ha2eV))
         cl_energies.append(mo[1])
     if cl_energies:
-        cl_energies = np.array(cl_energies, dtype=np.float) * hartree2eV
+        cl_energies = np.array(cl_energies, dtype=np.float) * ha2eV
         print("\nNumber of {}-MOs: {}".format(ARGS.ao_type, len(cl_energies)))
         print("Average: {:.2f}".format(np.average(cl_energies)))
         print("StdDev: {:.2f}".format(np.std(cl_energies)))
@@ -133,6 +137,13 @@ if __name__ == '__main__':
         for i in range(11):
             print("\t{:.2f}\t{}".format(bins[i], freq[i]))
 
+    if (ARGS.elements and ARGS.per_element_flag):
         print("Atomic Analysis:")
-
-
+        for element in ARGS.elements:
+            for i in range(orca_data.geometry.nAtoms):
+                if orca_data.geometry.atoms[i].element == element:
+                    cle = orca_data.filter_orbitals(orb_pop,
+                                                    orbital_type=ARGS.ao_type,
+                                                    atom=i)
+                    energy = np.average(np.array([e[1] for e in cle])) * ha2eV
+                    print("{:>2}{:03d} {:.2f}".format(element, i, energy))
