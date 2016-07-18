@@ -50,9 +50,40 @@ parser.add_argument('-pe', "--per-element", action="store_true", default=False,
                     dest="per_element_flag", help='Requires -e <Element(s)> '
                     'Returns an average MO-energy for each atom of a certain '
                     'element [Default: False].')
+parser.add_argument('-p', '--pymol', action='store', dest="pymol",
+                    type=float, nargs='+',
+                    help='Provides a pymol script which can map elemental '
+                         'binding energies onto the corresponding atom. '
+                         'Two numbers need to be provided representing max and'
+                         ' min of the scale [Default: False]')
 
 ARGS = parser.parse_args()
 
+
+def mix_colours(value):
+    """
+    Change the given (HEX) colour into a brighter or darker tint.
+
+    For brightening  tint > 0
+    For shading      tint < 0
+    """
+    cMin = ARGS.pymol[0]
+    cMax = ARGS.pymol[1]
+    if cMin > cMax:
+        cMax = ARGS.pymol[0]
+        cMin = ARGS.pymol[1]
+
+    colourMin = [141, 249, 51]    # Green
+    colourMax = [245, 105, 13]  # LightOrange
+    colourMin = np.array(colourMin, dtype=np.float) / 256
+    colourMax = np.array(colourMax, dtype=np.float) / 256
+
+    if not (value > cMin and value < cMax):
+        sys.exit("Av. MO-energy ({.2f} eV is outside of bounds.".format(value))
+
+    ratio = (value - cMin) / (cMax - cMin)
+    rgb = (colourMin + ratio * (colourMax - colourMin))
+    return rgb
 
 if __name__ == '__main__':
     # Does the input file exist?
@@ -139,6 +170,9 @@ if __name__ == '__main__':
 
     if (ARGS.elements and ARGS.per_element_flag):
         print("Atomic Analysis:")
+
+        if (os.path.exists("{}.pmc".format(basename)) and ARGS.pymol):
+            os.remove("{}.pmc".format(basename))
         for element in ARGS.elements:
             for i in range(orca_data.geometry.nAtoms):
                 if orca_data.geometry.atoms[i].element == element:
@@ -147,3 +181,11 @@ if __name__ == '__main__':
                                                     atom=i)
                     energy = np.average(np.array([e[1] for e in cle])) * ha2eV
                     print("{:>2}{:03d} {:.2f}".format(element, i, energy))
+                    if ARGS.pymol:
+                        with open("{}.pmc".format(basename), "a") as pml:
+                            e = np.abs(energy)
+                            col = "[{}]".format(",".join([str(c) for c in
+                                                          mix_colours(e)]))
+                            pml.write("set_color tmp{}={}\n".format(i, col))
+                            pml.write("sele id {}\n".format(i + 1))
+                            pml.write("color tmp{}, sele\n".format(i))
