@@ -68,22 +68,34 @@ def mix_colours(value):
     For shading      tint < 0
     """
     cMin = ARGS.pymol[0]
-    cMax = ARGS.pymol[1]
+    cMax = ARGS.pymol[-1]
     if cMin > cMax:
         cMax = ARGS.pymol[0]
-        cMin = ARGS.pymol[1]
+        cMin = ARGS.pymol[-1]
+    if len(ARGS.pymol) == 3:
+        halfway = ARGS.pymol[1]
+    else:
+        halfway = cMin + (cMax - cMin) / 2
 
-    colourMin = [141, 249, 51]    # Green
-    colourMax = [245, 105, 13]  # LightOrange
-    colourMin = np.array(colourMin, dtype=np.float) / 256
-    colourMax = np.array(colourMax, dtype=np.float) / 256
-
+    colourMin = [14, 118, 255]  # Blue
+    colourMax = [255, 172, 14]  # Orange
+    neutral = [196, 196, 196]   # Neutral White
+    colourMin = np.array(colourMin, dtype=np.float) / 255
+    colourMax = np.array(colourMax, dtype=np.float) / 255
+    neutral = np.array(neutral, dtype=np.float) / 255
     if not (value > cMin and value < cMax):
         sys.exit("Av. MO-energy ({.2f} eV is outside of bounds.".format(value))
 
-    ratio = (value - cMin) / (cMax - cMin)
-    rgb = (colourMin + ratio * (colourMax - colourMin))
-    return rgb
+    # ratio = (value - cMin) / (cMax - cMin)
+    # rgb = (colourMin + ratio * (colourMax - colourMin))
+    if value > halfway:
+        ratio = (value - halfway) / (cMax - halfway)
+        return (neutral + ratio * (colourMax - neutral))
+    else:
+        ratio = (value - cMin) / (halfway - cMin)
+        # print (neutral)
+        # return neutral
+        return (colourMin + ratio * (neutral - colourMin))
 
 if __name__ == '__main__':
     # Does the input file exist?

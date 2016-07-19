@@ -135,5 +135,5 @@ if __name__ == '__main__':
             for atom in cn[i]:
                 if geometry.is_bound(atom, i, ARGS.connect_tol):
                     with open(new_filname[:-4] + "_con.pmc", 'a') as con:
-                        con.write()
-                    print("bond id {}, id {}".format(i + 1, atom + 1))
+                        con.write("bond id {}, id {}\n".format(i + 1, atom + 1))
+                    # print("bond id {}, id {}".format(i + 1, atom + 1))
