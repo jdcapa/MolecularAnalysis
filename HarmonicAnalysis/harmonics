@@ -144,4 +144,5 @@ if __name__ == '__main__':
     if ARGS.vib_write_flag:
         vib_filename = job.basename + iso_string + ".vib"
         with open(os.path.join(job.directory, vib_filename), 'w') as vib:
-            vib.write(PF.print_cartesian_diplacements(harm, "Angs"))
+            vib.write(PF.print_cartesian_diplacements(harm, "Angs", 9,
+                                                      ARGS.scaling))
