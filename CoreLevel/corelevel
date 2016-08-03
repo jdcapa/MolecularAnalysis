@@ -54,8 +54,17 @@ parser.add_argument('-p', '--pymol', action='store', dest="pymol",
                     type=float, nargs='+',
                     help='Provides a pymol script which can map elemental '
                          'binding energies onto the corresponding atom. '
-                         'Two numbers need to be provided representing max and'
-                         ' min of the scale [Default: False]')
+                         'Two numbers need to be provided representing max '
+                         ' (mid) and min of the scale [Default: False]')
+parser.add_argument('-c', '--charge', action='store_true',
+                    default=False, dest="charge",
+                    help='Sums the partial charge densities of the targeted '
+                         'atoms.')
+parser.add_argument('-s', '--spin', action='store_true',
+                    default=False, dest="spin",
+                    help='Sums the partial spin densities of the targeted '
+                         'atoms.')
+
 
 ARGS = parser.parse_args()
 
@@ -201,3 +210,23 @@ if __name__ == '__main__':
                             pml.write("set_color tmp{}={}\n".format(i, col))
                             pml.write("sele id {}\n".format(i + 1))
                             pml.write("color tmp{}, sele\n".format(i))
+
+    if (ARGS.spin or ARGS.charge):
+        charge_spin = orca_data.get_partial_charges_spins()
+        if not charge_spin:
+            sys.exit("No Loewdin atomic population analysis found.")
+        spin, charge = 0.0, 0.0
+        for entry in charge_spin:
+            if ARGS.elements:
+                if entry[1] in ARGS.elements:
+                    charge += entry[2]
+                    spin += entry[3]
+            elif ARGS.atoms:
+                if entry[0] in ARGS.atoms:
+                    charge += entry[2]
+                    spin += entry[3]
+        if ARGS.spin:
+            print("Total spin density of the "
+                  "selected fragment: {:.3f}".format(spin))
+        if ARGS.charge:
+            print("Total charge of selected fragment: {:.3f}".format(charge))
