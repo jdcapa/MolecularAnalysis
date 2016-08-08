@@ -10,7 +10,7 @@ import sys
 scripts = ["GeoOpt/gopt",
            "XYZ/xyz",
            "HarmonicAnalysis/harmonics",
-           "CoreLevel/corelevel"
+           "CoreLevel/corelevel",
            "InputMultiplicities/inp_mult"]
 
 
