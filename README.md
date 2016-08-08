@@ -47,6 +47,11 @@ A set of routines that reads the Hessian of a frequency calculation. The output 
 
 Reports energy of filtered core molecular orbitals.
 The analysis is based on an orca  Loewdin reduced orbital population analysis  which can be activated by including the following in the orca input file:
+
+## inp_mult – creates different multiplicities of the same job
+
+Takes an inputfile (currently only orca xyz) and spawnes jobs with different multiplicities. It also creates the neccesary folders.
+
 ```
 %output
    Print[P_OrbPopMO_L]  1

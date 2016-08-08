@@ -1,0 +1,158 @@
+#!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
+"""Takes an input orca calculation and spawns other multiplicities."""
+import os
+import re
+import sys
+from moleculartoolbox import OrcaOutput
+import argparse
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('input_file', metavar='Input File', type=str,
+                    help='This is an orca input file.')
+parser.add_argument('-r', '--root', action='store', dest="root",
+                    type=str, default="",
+                    help="The molecule's root directory.")
+parser.add_argument('-b', '--basename', action='store', dest="basename",
+                    type=str, default='',
+                    help="The molecule's basename.")
+parser.add_argument('-m', '--multiplicities', action='store', dest="mults",
+                    type=int, nargs='+',
+                    help='Multiplicities to spawn [Default: +/-1 of the'
+                         ' input molecule].')
+parser.add_argument('-c', '--charge', action='store', dest="charge",
+                    type=int, default=666,
+                    help='Charge of the molecule [default: charge of the'
+                         ' input molecule].')
+parser.add_argument('-f', '--force',
+                    action="store_true",
+                    default=False,
+                    dest="overwrite",
+                    help=('Overwrites existing input files '
+                          '[default: False].'))
+# parser.add_argument('-ag', '--all-geometries',
+#                     action="store_true",
+#                     default=False,
+#                     dest="all_geometries",
+#                     help=('Does the set-up for all found geometries '
+#                           '[default: False].'))
+ARGS = parser.parse_args()
+
+
+def analyse_directory(dir):
+    """
+    Find root and different geometries.
+
+    We can have multiple levels:
+    root
+    |---C{charge}
+        |---M{mult}
+           [|---G{geom}]            |
+                |---Type            |- rest
+                    |---input_file  |
+    """
+    dirs = inp_dir.split(os.sep)
+    re_c = re.compile("C([-+\d]+)")
+    re_g = re.compile("G([\d]+)")
+    re_m = re.compile("M([\d]+)")
+    geoms = [d for d in dirs if re_g.match(d)]
+    if ARGS.root:
+        if os.path.exists(ARGS.root):
+            root = ARGS.root
+        else:
+            sys.exit("The root dir could not be found.".format(ARGS.root))
+    else:
+        root = ""
+        found_root = False
+        # Try to get a root from the input file dir
+        for folder in dirs:
+            if (re_c.match(folder) and not found_root):
+                found_root = True
+                break
+            if (folder and not found_root):
+                root += os.sep + folder
+    if not found_root:
+        sys.exit("The root dir could not be found.".format(root))
+    # find rest
+    mult_flag = False
+    geom = None
+    rest = ""
+    for folder in dirs:
+        if re_m.match(folder):
+            mult_flag = True
+            continue
+        if re_g.match(folder):
+            geom = folder
+        if mult_flag:
+            rest += folder + os.sep
+
+    return root, geoms, rest, geom
+
+
+if __name__ == '__main__':
+    # Does the input file exist?
+    if not os.path.exists(ARGS.input_file):
+        sys.exit("{} does not exist.".format(ARGS.input_file))
+    else:
+        inp_dir = os.path.dirname(os.path.abspath(ARGS.input_file))
+    if ARGS.input_file[-3:] not in ["inp", "INP"]:
+        sys.exit("We need a valid input file")
+
+    # Find root and geometries
+    root, geoms, rest, geom = analyse_directory(inp_dir)
+
+    # Set up basename
+    if not ARGS.basename:
+        basename = os.path.basename(root)
+    else:
+        basename = ARGS.basename
+
+    # Read the input file:
+    with open(ARGS.input_file) as input_file:
+        inp = input_file.read()
+    inp_basename = ".".join(os.path.basename(ARGS.input_file).split(".")[:-1])
+    orca = OrcaOutput(inp_dir, inp_basename, True)
+    geometry = orca.geometry
+    current_charge = geometry.charge
+    current_mult = geometry.multiplicity
+    # Determine charge
+    if ARGS.charge == 666:
+        charge = current_charge
+    else:
+        charge = ARGS.charge
+    # Determine multiplicities
+    if not ARGS.mults:
+        if current_mult >= 3:
+            mults = [current_mult - 2, current_mult + 2]
+        else:
+            mults = [current_mult + 2]
+    else:
+        mults = ARGS.mults
+
+    # Check if multiplicities are possible
+    for mult in mults:
+        if mult != geometry.check_mult(mult, False, charge):
+            sys.exit("Multiplicities not possible")
+    # Write new input files for each multiplicity
+    charge_str = "C{}".format(charge)
+    for mult in mults:
+        mult_str = "M{}".format(mult)
+        # Path
+        new_path = os.path.join(root, charge_str, mult_str, rest)
+        if not os.path.exists(new_path):
+            os.makedirs(new_path)
+        # Filename
+        if geom:
+            new_file = "_".join([basename, charge_str, mult_str, geom])
+        else:
+            new_file = "_".join([basename, charge_str, mult_str])
+        new_file = os.path.join(new_path, new_file + ".inp")
+        # File Content
+        re_xyz = re.compile("\*\s*xyz [-+\d]+\s*\d+")
+        if (not os.path.exists(new_file) or ARGS.overwrite):
+            with open(new_file, "w") as new_inp:
+                for line in inp.split("\n"):
+                    if re_xyz.search(line):
+                        line = "* xyz {:d} {:d}".format(charge, mult)
+                    new_inp.write(line + "\n")
+        else:
+            print("Skipping already existing {}.".format(new_file))
