@@ -151,16 +151,16 @@ if __name__ == '__main__':
             new_file = "_".join([basename, charge_str, mult_str, geom])
         else:
             new_file = "_".join([basename, charge_str, mult_str])
-        new_file = os.path.join(new_path, new_file + ".inp")
+        new_file_full = os.path.join(new_path, new_file + ".inp")
         if ARGS.verbose:
             print(new_path, "\n> ", new_file)
         # File Content
         re_xyz = re.compile("\*\s*xyz [-+\d]+\s*\d+")
-        if (not os.path.exists(new_file) or ARGS.overwrite):
-            with open(new_file, "w") as new_inp:
+        if (not os.path.exists(new_file_full) or ARGS.overwrite):
+            with open(new_file_full, "w") as new_inp:
                 for line in inp.split("\n"):
                     if re_xyz.search(line):
                         line = "* xyz {:d} {:d}".format(charge, mult)
                     new_inp.write(line + "\n")
         else:
-            print("Skipping already existing {}.".format(new_file))
+            print("Skipping already existing {}.".format(new_file_full))
