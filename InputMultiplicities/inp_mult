@@ -29,6 +29,12 @@ parser.add_argument('-f', '--force',
                     dest="overwrite",
                     help=('Overwrites existing input files '
                           '[default: False].'))
+parser.add_argument('-v', '--verbose',
+                    action="store_true",
+                    default=False,
+                    dest="verbose",
+                    help=('Prints more detail '
+                          '[default: False].'))
 # parser.add_argument('-ag', '--all-geometries',
 #                     action="store_true",
 #                     default=False,
@@ -146,6 +152,8 @@ if __name__ == '__main__':
         else:
             new_file = "_".join([basename, charge_str, mult_str])
         new_file = os.path.join(new_path, new_file + ".inp")
+        if ARGS.verbose:
+            print(new_path, "\n> ", new_file)
         # File Content
         re_xyz = re.compile("\*\s*xyz [-+\d]+\s*\d+")
         if (not os.path.exists(new_file) or ARGS.overwrite):
