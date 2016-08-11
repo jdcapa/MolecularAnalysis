@@ -46,6 +46,10 @@ parser.add_argument('-b', '--bonds', action='store', dest="bonds",
                     help='Filter according to elements bound to other elements'
                          ' (e.g. "Pt-O" would only return MOs of those Pt that'
                          ' are bound to O ).')
+parser.add_argument('-bf', '--bonding-factor', type=float, action='store',
+                    dest="bond_tol", default=1.21,
+                    help="Factor the bond radius is multiplied with to "
+                         "determine whether there is a bond [Default: 1.21].")
 parser.add_argument('-pe', "--per-element", action="store_true", default=False,
                     dest="per_element_flag", help='Requires -e <Element(s)> '
                     'Returns an average MO-energy for each atom of a certain '
@@ -56,6 +60,11 @@ parser.add_argument('-p', '--pymol', action='store', dest="pymol",
                          'binding energies onto the corresponding atom. '
                          'Two numbers need to be provided representing max '
                          ' (mid) and min of the scale [Default: False]')
+
+parser.add_argument('-cn', '--ccordination_number', action='store_true',
+                    default=False, dest="cn_flag",
+                    help='Prints the coordination number of the atom '
+                         'atoms.')
 parser.add_argument('-c', '--charge', action='store_true',
                     default=False, dest="charge",
                     help='Sums the partial charge densities of the targeted '
@@ -106,6 +115,42 @@ def mix_colours(value):
         # return neutral
         return (colourMin + ratio * (neutral - colourMin))
 
+
+def filter_atoms(geom, raw_core_levels, **kwargs):
+    """
+    Filter atoms according to certain criteria and add coordination numbers.
+
+    core_level = [atom_number, element, E, StdDef(E)]
+    """
+    core_levels = []
+    ha2eV = CONST.hartree_energy(unit="eV")
+    if 'atoms' in kwargs:
+        atoms = kwargs['atoms']
+    else:
+        atoms = []
+    if 'elements' in kwargs:
+        elements = kwargs['elements']
+    else:
+        elements = []
+
+    for i, energies in raw_core_levels.items():
+        if not energies:
+            continue
+        average_E = 0
+        stdDev_E = 0
+        if atoms:
+            if i in atoms:
+                average_E = np.average(np.array(energies)) * ha2eV
+                stdDev_E = np.std(np.array(energies)) * ha2eV
+        elif elements:
+            if geom.atoms[i].element in elements:
+                average_E = np.average(np.array(energies)) * ha2eV
+                stdDev_E = np.std(np.array(energies)) * ha2eV
+        if (average_E and stdDev_E):
+            core_levels.append([i, geom.atoms[i].element, average_E, stdDev_E])
+    return core_levels
+
+
 if __name__ == '__main__':
     # Does the input file exist?
     if not os.path.exists(ARGS.outfile):
@@ -117,23 +162,23 @@ if __name__ == '__main__':
     else:
         basename = ".".join(ARGS.outfile.split(".")[:-1])
     # Reading the orca output
+    print(basename, base_dir)
     orca_data = OrcaOutput(base_dir, basename)
-    orb_pop = orca_data.get_orbital_populations()
+    geom = orca_data.geometry
+    raw_cl = orca_data.core_level_per_atom(ARGS.ao_type)
 
-    # Generating the relevant core level orbital list
+    # Generating the relevant core level orbital list according to options
+    # Filter according to elements
     if ARGS.elements:
-        core_levels = orca_data.filter_orbitals(orb_pop,
-                                                orbital_type=ARGS.ao_type,
-                                                elements=ARGS.elements)
+        core_levels = filter_atoms(geom, raw_cl, elements=ARGS.elements)
+    # Filter according to pre-selected atom numbers
     elif ARGS.atoms:
-        core_levels = orca_data.filter_orbitals(orb_pop,
-                                                orbital_type=ARGS.ao_type,
-                                                atoms=ARGS.atoms)
+        core_levels = filter_atoms(geom, raw_cl, atoms=ARGS.atoms)
+    # Only select those atoms with a certain bond
     elif ARGS.bonds:
         if "-" not in ARGS.bonds[0]:
             sys.exit("Bonding needs to be specified, e.g. 'O-H' or Pt-O-H")
         atoms = []
-        geom = orca_data.geometry
         cn = geom.closest_neighbours()
         bonds = [b.split("-") for b in ARGS.bonds]
         for bond in bonds:
@@ -154,79 +199,115 @@ if __name__ == '__main__':
                             atoms.append(i)
         atoms = list(set(atoms))
         print("filtering for atoms:", np.array(atoms, dtype=int) + 1)
-        core_levels = orca_data.filter_orbitals(orb_pop,
-                                                orbital_type=ARGS.ao_type,
-                                                atoms=atoms)
+        core_levels = filter_atoms(geom, raw_cl, atoms=atoms)
+    # Take all atoms
     else:
-        core_levels = orca_data.filter_orbitals(orb_pop,
-                                                orbital_type=ARGS.ao_type)
+        core_levels = orca_data.filter_orbitals(geom, raw_cl)
 
-    # Core Level Orbital  Analysis
-    cl_energies = []
-    ha2eV = CONST.hartree_energy(unit="eV")
-    print(" MO   E[ev]")
-    for mo in core_levels:
-        print("{:04d} {:.2f}".format(mo[0], mo[1] * ha2eV))
-        cl_energies.append(mo[1])
-    if cl_energies:
-        cl_energies = np.array(cl_energies, dtype=np.float) * ha2eV
-        print("\nNumber of {}-MOs: {}".format(ARGS.ao_type, len(cl_energies)))
-        print("Average: {:.2f}".format(np.average(cl_energies)))
-        print("StdDev: {:.2f}".format(np.std(cl_energies)))
-        print("Min: {:.1f}, Max: {:.1f}".format(np.min(cl_energies),
-                                                np.max(cl_energies)))
-        diff = np.abs(np.min(cl_energies) - np.max(cl_energies))
-        bins = np.linspace(np.min(cl_energies), np.max(cl_energies), 11)
-        freq = np.zeros((11), dtype=np.int)
-        for cl_energy in cl_energies:
-            for i, en in enumerate(bins):
-                # print(cl_energy, en - 0.05 * diff, )
-                if (cl_energy > en - 0.05 * diff and
-                        cl_energy <= en + 0.05 * diff):
-                    freq[i] += 1
-                    break
-        print("Frequency distribution (Binning)")
-        for i in range(11):
-            print("\t{:.2f}\t{}".format(bins[i], freq[i]))
-
-    if (ARGS.elements and ARGS.per_element_flag):
-        print("Atomic Analysis:")
-
-        if (os.path.exists("{}.pmc".format(basename)) and ARGS.pymol):
-            os.remove("{}.pmc".format(basename))
-        for element in ARGS.elements:
-            for i in range(orca_data.geometry.nAtoms):
-                if orca_data.geometry.atoms[i].element == element:
-                    cle = orca_data.filter_orbitals(orb_pop,
-                                                    orbital_type=ARGS.ao_type,
-                                                    atom=i)
-                    energy = np.average(np.array([e[1] for e in cle])) * ha2eV
-                    print("{:>2}{:03d} {:.2f}".format(element, i, energy))
-                    if ARGS.pymol:
-                        with open("{}.pmc".format(basename), "a") as pml:
-                            e = np.abs(energy)
-                            col = "[{}]".format(",".join([str(c) for c in
-                                                          mix_colours(e)]))
-                            pml.write("set_color tmp{}={}\n".format(i, col))
-                            pml.write("sele id {}\n".format(i + 1))
-                            pml.write("color tmp{}, sele\n".format(i))
-
+    final_tab_header = ["#", "Elm.", "<E>", "σ(E)"]
+    header_format = "{:>3}  {:<4}  {:>8}  {:>5}"
+    tabel_format = "{:>3d}  {:<4}  {:>8.2f}  {:>5.2f}"
+    # Adding spin and charge
     if (ARGS.spin or ARGS.charge):
         charge_spin = orca_data.get_partial_charges_spins()
+        if ARGS.spin:
+            final_tab_header.append("ρ(s)")
+            header_format += "  {:>5}"
+            tabel_format += "  {:>5.2f}"
+            for i, cl in enumerate(core_levels):
+                core_levels[i].append(charge_spin[cl[0]][3])
+        if ARGS.charge:
+            final_tab_header.append("ρ(c)")
+            header_format += "  {:>5}"
+            tabel_format += "  {:>5.2f}"
+            for i, cl in enumerate(core_levels):
+                core_levels[i].append(charge_spin[cl[0]][2])
         if not charge_spin:
             sys.exit("No Loewdin atomic population analysis found.")
-        spin, charge = 0.0, 0.0
-        for entry in charge_spin:
-            if ARGS.elements:
-                if entry[1] in ARGS.elements:
-                    charge += entry[2]
-                    spin += entry[3]
-            elif ARGS.atoms:
-                if entry[0] in ARGS.atoms:
-                    charge += entry[2]
-                    spin += entry[3]
-        if ARGS.spin:
-            print("Total spin density of the "
-                  "selected fragment: {:.3f}".format(spin))
-        if ARGS.charge:
-            print("Total charge of selected fragment: {:.3f}".format(charge))
+
+    # Adding coordination number
+    if ARGS.cn_flag:
+        final_tab_header.append("CN")
+        header_format += "  {:>3}"
+        tabel_format += "  {:>3d}"
+        for i, cl in enumerate(core_levels):
+            cn = geom.coordination_number(cl[0],
+                                          tollerance_factor=ARGS.bond_tol)
+            core_levels[i].append(cn)
+
+    # Per-Atom Core Level Orbital Analysis
+
+    print("Atomic Analysis:\n")
+    print(header_format.format(*final_tab_header))
+    for cl in core_levels:
+        # print(cl)
+        print(tabel_format.format(*cl))
+
+    # cl_energies = []
+
+    # print(" MO   E[ev]")
+    # for mo in core_levels:
+    #     print("{:04d} {:.2f}".format(mo[0], mo[1] * ha2eV))
+    #     cl_energies.append(mo[1])
+    # if cl_energies:
+    #     cl_energies = np.array(cl_energies, dtype=np.float) * ha2eV
+    #     print("\nNumber of {}-MOs: {}".format(ARGS.ao_type, len(cl_energies)))
+    #     print("Average: {:.2f}".format(np.average(cl_energies)))
+    #     print("StdDev: {:.2f}".format(np.std(cl_energies)))
+    #     print("Min: {:.1f}, Max: {:.1f}".format(np.min(cl_energies),
+    #                                             np.max(cl_energies)))
+    #     diff = np.abs(np.min(cl_energies) - np.max(cl_energies))
+    #     bins = np.linspace(np.min(cl_energies), np.max(cl_energies), 11)
+    #     freq = np.zeros((11), dtype=np.int)
+    #     for cl_energy in cl_energies:
+    #         for i, en in enumerate(bins):
+    #             # print(cl_energy, en - 0.05 * diff, )
+    #             if (cl_energy > en - 0.05 * diff and
+    #                     cl_energy <= en + 0.05 * diff):
+    #                 freq[i] += 1
+    #                 break
+    #     print("Frequency distribution (Binning)")
+    #     for i in range(11):
+    #         print("\t{:.2f}\t{}".format(bins[i], freq[i]))
+
+    # if (ARGS.elements and ARGS.per_element_flag):
+    #     print("Atomic Analysis:")
+
+    #     if (os.path.exists("{}.pmc".format(basename)) and ARGS.pymol):
+    #         os.remove("{}.pmc".format(basename))
+    #     for element in ARGS.elements:
+    #         for i in range(orca_data.geometry.nAtoms):
+    #             if orca_data.geometry.atoms[i].element == element:
+    #                 cle = orca_data.filter_orbitals(orb_pop,
+    #                                                 orbital_type=ARGS.ao_type,
+    #                                                 atom=i)
+    #                 energy = np.average(np.array([e[1] for e in cle])) * ha2eV
+    #                 print("{:>2}{:03d} {:.2f}".format(element, i, energy))
+    #                 if ARGS.pymol:
+    #                     with open("{}.pmc".format(basename), "a") as pml:
+    #                         e = np.abs(energy)
+    #                         col = "[{}]".format(",".join([str(c) for c in
+    #                                                       mix_colours(e)]))
+    #                         pml.write("set_color tmp{}={}\n".format(i, col))
+    #                         pml.write("sele id {}\n".format(i + 1))
+    #                         pml.write("color tmp{}, sele\n".format(i))
+
+    # if (ARGS.spin or ARGS.charge):
+    #     charge_spin = orca_data.get_partial_charges_spins()
+    #     if not charge_spin:
+    #         sys.exit("No Loewdin atomic population analysis found.")
+    #     spin, charge = 0.0, 0.0
+    #     for entry in charge_spin:
+    #         if ARGS.elements:
+    #             if entry[1] in ARGS.elements:
+    #                 charge += entry[2]
+    #                 spin += entry[3]
+    #         elif ARGS.atoms:
+    #             if entry[0] in ARGS.atoms:
+    #                 charge += entry[2]
+    #                 spin += entry[3]
+    #     if ARGS.spin:
+    #         print("Total spin density of the "
+    #               "selected fragment: {:.3f}".format(spin))
+    #     if ARGS.charge:
+    #         print("Total charge of selected fragment: {:.3f}".format(charge))
