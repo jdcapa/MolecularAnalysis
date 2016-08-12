@@ -19,11 +19,7 @@ import numpy as np
 # from moleculartoolbox import printfunctions as PF
 # from moleculartoolbox import Geometry
 from moleculartoolbox import OrcaOutput
-from chemphysconst import Constants
 
-
-# Globals
-CONST = Constants()
 # delete_tmp = False
 
 parser = argparse.ArgumentParser(description=__doc__)
@@ -123,7 +119,6 @@ def filter_atoms(geom, raw_core_levels, **kwargs):
     core_level = [atom_number, element, E, StdDef(E)]
     """
     core_levels = []
-    ha2eV = CONST.hartree_energy(unit="eV")
     if 'atoms' in kwargs:
         atoms = kwargs['atoms']
     else:
@@ -132,7 +127,6 @@ def filter_atoms(geom, raw_core_levels, **kwargs):
         elements = kwargs['elements']
     else:
         elements = []
-
     for i, energies in raw_core_levels.items():
         if not energies:
             continue
@@ -140,14 +134,15 @@ def filter_atoms(geom, raw_core_levels, **kwargs):
         stdDev_E = 0
         if atoms:
             if i in atoms:
-                average_E = np.average(np.array(energies)) * ha2eV
-                stdDev_E = np.std(np.array(energies)) * ha2eV
+                average_E = np.average(np.array(energies))
+                stdDev_E = np.std(np.array(energies))
         elif elements:
             if geom.atoms[i].element in elements:
-                average_E = np.average(np.array(energies)) * ha2eV
-                stdDev_E = np.std(np.array(energies)) * ha2eV
+                average_E = np.average(np.array(energies))
+                stdDev_E = np.std(np.array(energies))
         if (average_E and stdDev_E):
             core_levels.append([i, geom.atoms[i].element, average_E, stdDev_E])
+    # print(core_levels)
     return core_levels
 
 
