@@ -20,7 +20,7 @@ parser.add_argument('-s', "--scaling",
                     type=float, default=1.0,
                     dest="scaling",
                     help=('Scales the real frequencies by a given factor '
-                          '(e.g. B3LYP/def2-TZVP 0.9671) [default: 1.0]'))
+                          '(e.g. B3LYP/def2-TZVP 0.9671) [default: 1.0].'))
 parser.add_argument('-b', "--basename",
                     action='store',
                     type=str, default="",
@@ -31,20 +31,31 @@ parser.add_argument('-i', "--isotopes",
                     nargs="+", action='store', type=str, dest="isotopes",
                     help=('Substitute all related elements with the provided '
                           'isotope, e.g. 13C. This can also be a list of '
-                          'isotopes'))
+                          'isotopes.'))
 parser.add_argument('-v', '--vib',
                     action="store_true",
                     default=False,
                     dest="vib_write_flag",
                     help=('Writes an <basename><iso>.vib file containing the '
                           'displacement vectors of each vibration '
-                          '[default: False]'))
+                          '[default: False].'))
 parser.add_argument('-csv', '--csv',
                     action="store_true",
                     default=False,
                     dest="csv_write_flag",
                     help=('Writes an <basename><iso>.csv file containing an IR'
-                          ' stick-spectrum [default: False]'))
+                          ' stick-spectrum [default: False].'))
+parser.add_argument('-d', '--displacements',
+                    action="store_true",
+                    default=False,
+                    dest="displacements_flag",
+                    help=('Prints the displacments neccessary for a VPT2 '
+                          'calculation [default: False].'))
+parser.add_argument('-vv', '--verbose',
+                    action="store_true",
+                    default=False,
+                    dest="verbose_flag",
+                    help='Prints more detail[default: False].')
 
 ARGS = parser.parse_args()
 
@@ -63,7 +74,6 @@ def write_trajectory(geometries, energies, basename):
 
 def mon_header(job):
     """Analyse the calculation and decides what to do next."""
-
     type_mapping = {'Energy_Calc': "Single-point energy",
                     'Geo_Opt': "Geometry optimisation",
                     'Gradient_Calc': "Gradient calculation",
@@ -146,3 +156,11 @@ if __name__ == '__main__':
         with open(os.path.join(job.directory, vib_filename), 'w') as vib:
             vib.write(PF.print_cartesian_diplacements(harm, "Angs", 9,
                                                       ARGS.scaling))
+    # 4. Print anharmonic displacements
+    if ARGS.displacements_flag:
+        disp_geoms = harm.displaced_geometries(False, "bohr", 9,
+                                               ARGS.verbose_flag)
+        disp_filename = job.basename + iso_string + ".disp"
+        with open(os.path.join(job.directory, disp_filename), 'w') as disp:
+            for disp_geom in disp_geoms:
+                disp.write(harm.displaced_geometries(disp_geom))
