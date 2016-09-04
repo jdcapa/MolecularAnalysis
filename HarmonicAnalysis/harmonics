@@ -158,10 +158,10 @@ if __name__ == '__main__':
                                                       ARGS.scaling))
     # 4. Print anharmonic displacements
     if ARGS.displacements_flag:
-        disp_geoms = harm.displaced_geometries(False, "bohr", 9,
+        disp_geoms = harm.displaced_geometries(True, "bohr", 9,
                                                ARGS.verbose_flag)
         disp_filename = job.basename + iso_string + ".disp"
-        # with open(os.path.join(job.directory, disp_filename), 'w') as disp:
-        #     for disp_geom in disp_geoms:
-        #         print("1", disp_geom)
-        #         disp.write(harm.displaced_geometries(disp_geom))
+        with open(os.path.join(job.directory, disp_filename), 'w') as disp:
+            for disp_geom in disp_geoms:
+                print(disp_geom)
+                disp.write(disp_geom)
